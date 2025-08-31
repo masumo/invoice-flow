@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { useWeb3 } from '../contexts/Web3Context'
 import { toast } from 'react-hot-toast'
+import TransactionHistory from '../components/TransactionHistory'
+import TransactionLink from '../components/TransactionLink'
+import InvoiceThumbnail from '../components/InvoiceThumbnail'
 import {
   PlusIcon,
   DocumentTextIcon,
@@ -13,10 +16,11 @@ import {
 } from '@heroicons/react/24/outline'
 
 const SMEDashboard = () => {
-  const { account, contract, tokenizeInvoice, getInvoicesByOwner, getInvoice, connectWallet } = useWeb3()
+  const { account, contract, tokenizeInvoice, getInvoicesBySME, getInvoice, connectWallet } = useWeb3()
   const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const [lastTransactionHash, setLastTransactionHash] = useState(null)
   const [formData, setFormData] = useState({
     client: '',
     faceValue: '',
@@ -35,15 +39,8 @@ const SMEDashboard = () => {
   const loadInvoices = async () => {
     try {
       setLoading(true)
-      const tokenIds = await getInvoicesByOwner(account)
-      
-      // Fetch full invoice details for each token ID
-      const invoicePromises = tokenIds.map(tokenId => getInvoice(tokenId))
-      const invoiceDetails = await Promise.all(invoicePromises)
-      
-      // Filter out any null results and set the invoices
-      const validInvoices = invoiceDetails.filter(invoice => invoice !== null)
-      setInvoices(validInvoices)
+      const invoices = await getInvoicesBySME(account)
+      setInvoices(invoices)
     } catch (error) {
       console.error('Error loading invoices:', error)
       toast.error('Failed to load invoices')
@@ -85,19 +82,28 @@ const SMEDashboard = () => {
       return
     }
 
+    // Check if client address is the same as SME address
+    if (formData.client.toLowerCase() === account.toLowerCase()) {
+      toast.error('SME cannot be the client. Please enter a different client address.')
+      return
+    }
+
     try {
       setSubmitting(true)
       
       const dueDateTimestamp = Math.floor(dueDate.getTime() / 1000)
       const invoiceURI = formData.invoiceURI || `ipfs://invoice-${Date.now()}`
       
-      await tokenizeInvoice({
+      const receipt = await tokenizeInvoice({
         client: formData.client,
         faceValue: formData.faceValue,
         salePrice: formData.salePrice,
         dueDate: dueDateTimestamp,
         invoiceURI: invoiceURI
       })
+      
+      // Store transaction hash for display
+      setLastTransactionHash(receipt.hash)
       
       toast.success('Invoice tokenized successfully!')
       setShowModal(false)
@@ -286,7 +292,7 @@ const SMEDashboard = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Invoice ID
+                      Invoice
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Client
@@ -308,8 +314,11 @@ const SMEDashboard = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {invoices.map((invoice) => (
                     <tr key={invoice.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        #{invoice.id}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <InvoiceThumbnail invoiceId={invoice.id} className="w-10 h-10" />
+                          <span className="text-sm font-medium text-gray-900">#{invoice.id}</span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {invoice.client?.slice(0, 6)}...{invoice.client?.slice(-4)}
@@ -468,6 +477,11 @@ const SMEDashboard = () => {
           </div>
         </div>
       )}
+      
+      {/* Transaction History */}
+      <div className="mt-8">
+        <TransactionHistory limit={5} />
+      </div>
     </div>
   )
 }

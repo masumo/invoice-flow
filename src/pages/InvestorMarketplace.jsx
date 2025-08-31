@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useWeb3 } from '../contexts/Web3Context'
 import { toast } from 'react-hot-toast'
+import TransactionHistory from '../components/TransactionHistory'
+import TransactionLink from '../components/TransactionLink'
+import InvoiceThumbnail from '../components/InvoiceThumbnail'
 import {
   MagnifyingGlassIcon,
   FunnelIcon,
@@ -37,13 +40,16 @@ const InvestorMarketplace = () => {
       setLoading(true)
       // Get invoices with status 0 (OnMarket)
       const tokenIds = await getInvoicesByStatus(0)
+      console.log('Token IDs with status 0 (OnMarket):', tokenIds)
       
       // Fetch full invoice details for each token ID
       const invoicePromises = tokenIds.map(tokenId => getInvoice(tokenId))
       const invoiceDetails = await Promise.all(invoicePromises)
+      console.log('Invoice details:', invoiceDetails)
       
       // Filter out any null results and set the invoices
       const validInvoices = invoiceDetails.filter(invoice => invoice !== null)
+      console.log('Valid invoices:', validInvoices)
       setInvoices(validInvoices)
     } catch (error) {
       console.error('Error loading marketplace invoices:', error)
@@ -294,25 +300,30 @@ const InvestorMarketplace = () => {
               return (
                 <div key={invoice.id} className={`card ${isExpired ? 'opacity-75 border-gray-300' : 'card-hover'}`}>
                   <div className="p-6">
-                    {/* Header */}
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          Invoice #{invoice.id}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          SME: {invoice.sme?.slice(0, 6)}...{invoice.sme?.slice(-4)}
-                        </p>
+                    {/* Header with Thumbnail */}
+                    <div className="flex items-start gap-4 mb-4">
+                      <InvoiceThumbnail invoiceId={invoice.id} className="w-16 h-16" />
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              Invoice #{invoice.id}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              SME: {invoice.sme?.slice(0, 6)}...{invoice.sme?.slice(-4)}
+                            </p>
+                          </div>
+                          {isExpired ? (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-600">
+                              Expired
+                            </span>
+                          ) : (
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${risk.bg} ${risk.color}`}>
+                              {risk.level}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      {isExpired ? (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-600">
-                          Expired
-                        </span>
-                      ) : (
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${risk.bg} ${risk.color}`}>
-                          {risk.level}
-                        </span>
-                      )}
                     </div>
                     
                     {/* Key Metrics */}
@@ -392,6 +403,11 @@ const InvestorMarketplace = () => {
             </button>
           </div>
         )}
+      </div>
+      
+      {/* Transaction History */}
+      <div className="mt-8">
+        <TransactionHistory limit={5} />
       </div>
     </div>
   )

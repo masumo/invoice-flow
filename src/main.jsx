@@ -5,6 +5,9 @@ import { Toaster } from 'react-hot-toast'
 import App from './App.jsx'
 import './index.css'
 
+console.log('=== MAIN.JSX LOADED ===')
+
+console.log('=== CREATING REACT ROOT ===')
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>

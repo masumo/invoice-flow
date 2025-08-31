@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { ethers } from 'ethers'
 import toast from 'react-hot-toast'
+import { getTransactionUrl, getAddressUrl, formatTxHash, getNetworkName } from '../utils/blockchain'
 
 // Contract ABI - This would typically be imported from a generated file
 const CONTRACT_ABI = [
@@ -10,6 +11,8 @@ const CONTRACT_ABI = [
   "function markAsDefaulted(uint256 tokenId) external",
   "function getInvoicesByStatus(uint8 status) external view returns (uint256[])",
   "function getInvoicesByOwner(address owner) external view returns (uint256[])",
+    "function getInvoicesByClient(address client) external view returns (uint256[])",
+  "function getInvoicesBySME(address sme) external view returns (uint256[])",
   "function getInvoice(uint256 tokenId) external view returns (tuple(uint256 id, address sme, address investor, address client, uint256 faceValue, uint256 salePrice, uint256 dueDate, string invoiceURI, uint8 status, uint256 createdAt))",
   "function getTotalInvoices() external view returns (uint256)",
   "function calculateProfit(uint256 tokenId) external view returns (uint256)",
@@ -39,6 +42,7 @@ export const Web3Provider = ({ children }) => {
   const [contract, setContract] = useState(null)
   const [chainId, setChainId] = useState(null)
   const [isConnecting, setIsConnecting] = useState(false)
+  const [transactionHistory, setTransactionHistory] = useState([])
   const [isCorrectNetwork, setIsCorrectNetwork] = useState(false)
 
   const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS
@@ -49,6 +53,24 @@ export const Web3Provider = ({ children }) => {
   const isMetaMaskInstalled = () => {
     return typeof window !== 'undefined' && typeof window.ethereum !== 'undefined'
   }
+
+  // Add transaction to history
+  const addTransactionToHistory = useCallback((txHash, type, description, invoiceId = null) => {
+    const transaction = {
+      hash: txHash,
+      type,
+      description,
+      invoiceId,
+      timestamp: Date.now(),
+      explorerUrl: getTransactionUrl(txHash, chainId)
+    }
+    setTransactionHistory(prev => [transaction, ...prev])
+  }, [chainId])
+
+  // Get transaction URL for display
+  const getTransactionExplorerUrl = useCallback((txHash) => {
+    return getTransactionUrl(txHash, chainId)
+  }, [chainId])
 
   // Connect to wallet
   const connectWallet = useCallback(async () => {
@@ -82,6 +104,8 @@ export const Web3Provider = ({ children }) => {
       const correctNetwork = Number(network.chainId) === TARGET_CHAIN_ID
       setIsCorrectNetwork(correctNetwork)
 
+      console.log('Checking network - chainId:', Number(network.chainId), 'target:', TARGET_CHAIN_ID, 'contract address:', CONTRACT_ADDRESS)
+      
       if (!correctNetwork) {
         toast.error(`Please switch to ${TARGET_NETWORK_NAME}`)
       }
@@ -90,6 +114,9 @@ export const Web3Provider = ({ children }) => {
       if (CONTRACT_ADDRESS && correctNetwork) {
         const contractInstance = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, web3Signer)
         setContract(contractInstance)
+        console.log('Contract initialized successfully:', !!contractInstance)
+      } else {
+        console.log('Contract not initialized - wrong network or missing address')
       }
 
       toast.success('Wallet connected successfully!')
@@ -159,13 +186,53 @@ export const Web3Provider = ({ children }) => {
     }
 
     try {
-      const tx = await contract.tokenizeInvoice(
+      // Validasi network dan contract address
+      const network = await provider.getNetwork()
+      console.log('Current network:', network)
+      
+      const contractCode = await provider.getCode(contract.target)
+      if (contractCode === '0x') {
+        throw new Error('Contract not deployed on this network')
+      }
+
+      // Validasi parameter sebelum memanggil contract
+      const params = [
         invoiceData.client,
         ethers.parseEther(invoiceData.faceValue.toString()),
         ethers.parseEther(invoiceData.salePrice.toString()),
         invoiceData.dueDate,
         invoiceData.invoiceURI
-      )
+      ]
+      
+      console.log('Contract call parameters:')
+      params.forEach((param, index) => {
+        console.log(`Param ${index}:`, param)
+      })
+
+      // Test dengan staticCall dulu sebelum estimateGas
+      try {
+        const result = await contract.tokenizeInvoice.staticCall(...params)
+        console.log('Static call successful:', result)
+      } catch (staticError) {
+        console.log('Static call failed:', staticError)
+        throw new Error(`Contract validation failed: ${staticError.reason || staticError.message}`)
+      }
+
+      // Estimasi gas dengan fallback
+      let gasLimit
+      try {
+        const gasEstimate = await contract.tokenizeInvoice.estimateGas(...params)
+        gasLimit = gasEstimate * 120n / 100n // 20% buffer
+        console.log('Gas estimate successful:', gasEstimate.toString())
+      } catch (gasError) {
+        console.log('Gas estimation failed, using fallback:', gasError)
+        gasLimit = 500000n // Fallback gas limit yang aman
+      }
+
+      // Eksekusi transaksi dengan gas limit
+      const tx = await contract.tokenizeInvoice(...params, {
+        gasLimit: gasLimit
+      })
 
       toast.success('Transaction submitted! Waiting for confirmation...')
       const receipt = await tx.wait()
@@ -182,13 +249,34 @@ export const Web3Provider = ({ children }) => {
 
       const tokenId = event ? contract.interface.parseLog(event).args.tokenId : null
       
+      // Add to transaction history
+      addTransactionToHistory(
+        receipt.hash,
+        'tokenize',
+        `Invoice tokenized for ${formatTxHash(invoiceData.client)}`,
+        tokenId ? tokenId.toString() : null
+      )
+      
       toast.success('Invoice tokenized successfully!')
       return { receipt, tokenId }
     } catch (error) {
+      console.log('Full error:', error)
+      console.log('Error code:', error.code)
+      console.log('Error reason:', error.reason)
+      
+      if (error.code === 'CALL_EXCEPTION') {
+        console.log('Contract call failed - check parameters and contract state')
+        throw new Error(`Contract call failed: ${error.reason || 'Invalid parameters or contract state'}`)
+      } else if (error.code === 'INSUFFICIENT_FUNDS') {
+        throw new Error('Insufficient funds for gas fees')
+      } else if (error.code === 'NETWORK_ERROR') {
+        throw new Error('Network connection error')
+      }
+      
       console.error('Error tokenizing invoice:', error)
       throw error
     }
-  }, [contract, signer])
+  }, [contract, signer, provider, addTransactionToHistory])
 
   const buyInvoice = useCallback(async (tokenId, salePriceWei) => {
     if (!contract || !signer) {
@@ -202,13 +290,22 @@ export const Web3Provider = ({ children }) => {
 
       toast.success('Transaction submitted! Waiting for confirmation...')
       const receipt = await tx.wait()
+      
+      // Add to transaction history
+      addTransactionToHistory(
+        receipt.hash,
+        'buy',
+        `Invoice #${tokenId} purchased`,
+        tokenId
+      )
+      
       toast.success('Invoice purchased successfully!')
       return receipt
     } catch (error) {
       console.error('Error buying invoice:', error)
       throw error
     }
-  }, [contract, signer])
+  }, [contract, signer, addTransactionToHistory])
 
   const repayInvoice = useCallback(async (tokenId, faceValue) => {
     if (!contract || !signer) {
@@ -216,19 +313,34 @@ export const Web3Provider = ({ children }) => {
     }
 
     try {
+      // Debug: Log current wallet address
+      const currentAddress = await signer.getAddress()
+      console.log('Current wallet address:', currentAddress)
+      console.log('Attempting to repay invoice:', tokenId)
+      console.log('Face value:', faceValue)
+      
       const tx = await contract.repayInvoice(tokenId, {
-        value: faceValue.toString()
+        value: ethers.parseEther(faceValue.toString())
       })
 
       toast.success('Transaction submitted! Waiting for confirmation...')
       const receipt = await tx.wait()
+      
+      // Add to transaction history
+      addTransactionToHistory(
+        receipt.hash,
+        'repay',
+        `Invoice #${tokenId} repaid`,
+        tokenId
+      )
+      
       toast.success('Invoice repaid successfully!')
       return receipt
     } catch (error) {
       console.error('Error repaying invoice:', error)
       throw error
     }
-  }, [contract, signer])
+  }, [contract, signer, addTransactionToHistory])
 
   const getInvoicesByStatus = useCallback(async (status) => {
     if (!contract) return []
@@ -255,11 +367,17 @@ export const Web3Provider = ({ children }) => {
   }, [contract])
 
   const getInvoice = useCallback(async (tokenId) => {
-    if (!contract) return null
+    console.log('getInvoice called with tokenId:', tokenId, 'contract:', !!contract)
+    if (!contract) {
+      console.log('No contract available')
+      return null
+    }
 
     try {
+      console.log('Calling contract.getInvoice with tokenId:', tokenId)
       const invoice = await contract.getInvoice(tokenId)
-      return {
+      console.log('Raw invoice data from contract:', invoice)
+      const formattedInvoice = {
         id: Number(invoice.id),
         sme: invoice.sme,
         investor: invoice.investor,
@@ -273,6 +391,8 @@ export const Web3Provider = ({ children }) => {
         status: Number(invoice.status),
         createdAt: Number(invoice.createdAt)
       }
+      console.log('Formatted invoice data:', formattedInvoice)
+      return formattedInvoice
     } catch (error) {
       console.error('Error fetching invoice:', error)
       return null
@@ -280,19 +400,17 @@ export const Web3Provider = ({ children }) => {
   }, [contract])
 
   const getInvoicesByClient = useCallback(async (clientAddress) => {
-    if (!contract || !provider) return []
+    if (!contract) return []
 
     try {
-      // Use event filtering to find invoices where the user is the client
-      const filter = contract.filters.InvoiceTokenized(null, null, clientAddress)
-      const events = await contract.queryFilter(filter)
+      // Use the new getInvoicesByClient function from the smart contract
+      const tokenIds = await contract.getInvoicesByClient(clientAddress)
       
-      // Get invoice details for each tokenId found in events
+      // Get invoice details for each tokenId
       const invoices = []
-      for (const event of events) {
-        const tokenId = Number(event.args.tokenId)
+      for (const tokenId of tokenIds) {
         try {
-          const invoice = await getInvoice(tokenId)
+          const invoice = await getInvoice(Number(tokenId))
           if (invoice) {
             invoices.push(invoice)
           }
@@ -307,7 +425,47 @@ export const Web3Provider = ({ children }) => {
       console.error('Error fetching invoices by client:', error)
       return []
     }
-  }, [contract, provider, getInvoice])
+  }, [contract, getInvoice])
+
+  const getInvoicesBySME = useCallback(async (smeAddress) => {
+    if (!contract) return []
+
+    try {
+      // Use the new getInvoicesBySME function from the smart contract
+      const tokenIds = await contract.getInvoicesBySME(smeAddress)
+      
+      // Get invoice details for each tokenId
+      const invoices = []
+      for (const tokenId of tokenIds) {
+        try {
+          const invoice = await getInvoice(Number(tokenId))
+          if (invoice) {
+            invoices.push(invoice)
+          }
+        } catch (error) {
+          console.error(`Error fetching invoice ${tokenId}:`, error)
+          // Continue with other invoices even if one fails
+        }
+      }
+      
+      return invoices
+    } catch (error) {
+      console.error('Error fetching invoices by SME:', error)
+      return []
+    }
+  }, [contract, getInvoice])
+
+  const getTotalInvoices = useCallback(async () => {
+    if (!contract) return 0
+
+    try {
+      const total = await contract.getTotalInvoices()
+      return Number(total)
+    } catch (error) {
+      console.error('Error fetching total invoices:', error)
+      return 0
+    }
+  }, [contract])
 
   // Listen for account and network changes
   useEffect(() => {
@@ -371,6 +529,7 @@ export const Web3Provider = ({ children }) => {
     isConnecting,
     isCorrectNetwork,
     isMetaMaskInstalled: isMetaMaskInstalled(),
+    transactionHistory,
     
     // Actions
     connectWallet,
@@ -385,6 +544,12 @@ export const Web3Provider = ({ children }) => {
     getInvoicesByOwner,
     getInvoice,
     getInvoicesByClient,
+    getInvoicesBySME,
+    getTotalInvoices,
+    
+    // Utility functions
+    addTransactionToHistory,
+    getTransactionExplorerUrl,
     
     // Constants
     CONTRACT_ADDRESS,

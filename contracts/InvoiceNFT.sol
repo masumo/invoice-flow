@@ -56,9 +56,17 @@ contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
     // Mapping to track invoices by owner for efficient querying
     mapping(address => uint256[]) private invoicesByOwner;
     
+    // Mapping to track invoices by client for efficient querying
+    mapping(address => uint256[]) private invoicesByClient;
+    
+    // Mapping to track invoices by SME for efficient querying
+    mapping(address => uint256[]) private invoicesBySME;
+    
     // Mapping to track invoice positions in arrays for efficient removal
     mapping(uint256 => mapping(Status => uint256)) private invoiceStatusIndex;
     mapping(uint256 => mapping(address => uint256)) private invoiceOwnerIndex;
+    mapping(uint256 => mapping(address => uint256)) private invoiceClientIndex;
+    mapping(uint256 => mapping(address => uint256)) private invoiceSMEIndex;
     
     /**
      * @dev Events for tracking important contract interactions
@@ -166,6 +174,8 @@ contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
         // Add to tracking arrays
         _addToStatusArray(tokenId, Status.OnMarket);
         _addToOwnerArray(tokenId, msg.sender);
+        _addToClientArray(tokenId, client);
+        _addToSMEArray(tokenId, msg.sender);
         
         emit InvoiceTokenized(
             tokenId,
@@ -293,6 +303,24 @@ contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
     }
     
     /**
+     * @dev Get invoices by client
+     * @param client The client address to filter by
+     * @return Array of token IDs where the specified address is the client
+     */
+    function getInvoicesByClient(address client) external view returns (uint256[] memory) {
+        return invoicesByClient[client];
+    }
+    
+    /**
+     * @dev Get invoices by SME
+     * @param sme The SME address to filter by
+     * @return Array of token IDs created by the specified SME
+     */
+    function getInvoicesBySME(address sme) external view returns (uint256[] memory) {
+        return invoicesBySME[sme];
+    }
+    
+    /**
      * @dev Get detailed information about an invoice
      * @param tokenId The token ID to query
      * @return The complete invoice struct
@@ -407,6 +435,58 @@ contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
         
         ownerArray.pop();
         delete invoiceOwnerIndex[tokenId][owner];
+    }
+    
+    /**
+     * @dev Internal function to add invoice to client array
+     */
+    function _addToClientArray(uint256 tokenId, address client) private {
+        invoicesByClient[client].push(tokenId);
+        invoiceClientIndex[tokenId][client] = invoicesByClient[client].length - 1;
+    }
+    
+    /**
+     * @dev Internal function to remove invoice from client array
+     */
+    function _removeFromClientArray(uint256 tokenId, address client) private {
+        uint256[] storage clientArray = invoicesByClient[client];
+        uint256 index = invoiceClientIndex[tokenId][client];
+        uint256 lastIndex = clientArray.length - 1;
+        
+        if (index != lastIndex) {
+            uint256 lastTokenId = clientArray[lastIndex];
+            clientArray[index] = lastTokenId;
+            invoiceClientIndex[lastTokenId][client] = index;
+        }
+        
+        clientArray.pop();
+        delete invoiceClientIndex[tokenId][client];
+    }
+    
+    /**
+     * @dev Internal function to add invoice to SME array
+     */
+    function _addToSMEArray(uint256 tokenId, address sme) private {
+        invoicesBySME[sme].push(tokenId);
+        invoiceSMEIndex[tokenId][sme] = invoicesBySME[sme].length - 1;
+    }
+    
+    /**
+     * @dev Internal function to remove invoice from SME array
+     */
+    function _removeFromSMEArray(uint256 tokenId, address sme) private {
+        uint256[] storage smeArray = invoicesBySME[sme];
+        uint256 index = invoiceSMEIndex[tokenId][sme];
+        uint256 lastIndex = smeArray.length - 1;
+        
+        if (index != lastIndex) {
+            uint256 lastTokenId = smeArray[lastIndex];
+            smeArray[index] = lastTokenId;
+            invoiceSMEIndex[lastTokenId][sme] = index;
+        }
+        
+        smeArray.pop();
+        delete invoiceSMEIndex[tokenId][sme];
     }
     
     /**

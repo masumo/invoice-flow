@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useWeb3 } from '../contexts/Web3Context'
 import { toast } from 'react-hot-toast'
+import TransactionLink from '../components/TransactionLink'
+import InvoiceThumbnail from '../components/InvoiceThumbnail'
+import TransactionHistory from '../components/TransactionHistory'
 import {
   ArrowLeftIcon,
   CurrencyDollarIcon,
@@ -23,17 +26,35 @@ const InvoiceDetail = () => {
   const [loading, setLoading] = useState(true)
   const [purchasing, setPurchasing] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [lastTransactionHash, setLastTransactionHash] = useState(null)
+
+  console.log('InvoiceDetail component rendered - tokenId:', tokenId, 'account:', account, 'contract:', !!contract)
+  
+  if (typeof window !== 'undefined') {
+    console.log('INVOICE DETAIL COMPONENT LOADED - tokenId:', tokenId)
+  }
 
   useEffect(() => {
+    console.log('InvoiceDetail useEffect - contract:', !!contract, 'tokenId:', tokenId)
     if (contract && tokenId) {
+      console.log('Calling loadInvoice...')
       loadInvoice()
+    } else {
+      console.log('Missing contract or tokenId - contract:', !!contract, 'tokenId:', tokenId)
+      // Set loading to false if we don't have required data
+      if (!contract || !tokenId) {
+        setLoading(false)
+      }
     }
   }, [contract, tokenId])
 
   const loadInvoice = async () => {
+    console.log('=== LOAD INVOICE FUNCTION CALLED ===')
     try {
       setLoading(true)
+      console.log('Loading invoice with tokenId:', tokenId)
       const invoiceData = await getInvoice(tokenId)
+      console.log('Invoice data received:', invoiceData)
       setInvoice(invoiceData)
     } catch (error) {
       console.error('Error loading invoice:', error)
@@ -62,7 +83,11 @@ const InvoiceDetail = () => {
 
     try {
       setPurchasing(true)
-      await buyInvoice(invoice.id, invoice.salePriceWei)
+      const receipt = await buyInvoice(invoice.id, invoice.salePriceWei)
+      
+      // Store transaction hash for display
+      setLastTransactionHash(receipt.hash)
+      
       toast.success('Invoice purchased successfully!')
       setShowConfirmModal(false)
       
@@ -236,9 +261,12 @@ const InvoiceDetail = () => {
             Back
           </button>
           <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Invoice #{invoice.id}</h1>
-              <p className="text-gray-600 mt-1">Detailed invoice information and investment opportunity</p>
+            <div className="flex items-center space-x-4">
+              <InvoiceThumbnail invoiceId={invoice.id} className="w-16 h-16" />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Invoice #{invoice.id}</h1>
+                <p className="text-gray-600 mt-1">Detailed invoice information and investment opportunity</p>
+              </div>
             </div>
             <div className="flex items-center space-x-3">
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${risk.bg} ${risk.color}`}>
@@ -493,6 +521,11 @@ const InvoiceDetail = () => {
           </div>
         </div>
       )}
+      
+      {/* Transaction History */}
+      <div className="mt-8">
+        <TransactionHistory limit={5} />
+      </div>
     </div>
   )
 }
