@@ -1,8 +1,8 @@
 {
-  "contractAddress": "0x86757CC01F8BfA9dB48407147BdD00BDeD177e73",
+  "contractAddress": "0x67aC9ADE0e987782E73F3fd2CB367A2bB738dE7b",
   "network": "apothem",
   "chainId": "51",
   "deployer": "0x24E12d5Db42EefeC360e02aCc6F82C682e3C264d",
-  "deploymentTime": "2025-08-27T09:18:39.742Z",
-  "transactionHash": "0xe637d28c287d18e80a7f773aacf2d7cdd9b296a885d6a7d5c4ef0210660fb9d6"
+  "deploymentTime": "2025-08-31T15:53:08.037Z",
+  "transactionHash": "0xdca3cc7a2474d04a16ed747c6a967fbff3b2d8ae505442e44fe71ad3f66c95ce"
 }

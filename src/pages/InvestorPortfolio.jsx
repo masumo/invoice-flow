@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useWeb3 } from '../contexts/Web3Context'
 import { toast } from 'react-hot-toast'
+import InvoiceThumbnail from '../components/InvoiceThumbnail'
 import {
   CurrencyDollarIcon,
   ArrowTrendingUpIcon,
@@ -379,6 +380,11 @@ const InvestorPortfolio = () => {
               return (
                 <div key={invoice.id} className="card card-hover">
                   <div className="p-6">
+                    {/* Thumbnail */}
+                     <div className="mb-4">
+                       <InvoiceThumbnail invoiceId={invoice.id} className="w-16 h-16 mx-auto" />
+                     </div>
+                    
                     {/* Header */}
                     <div className="flex justify-between items-start mb-4">
                       <div>

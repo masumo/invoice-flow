@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useWeb3 } from '../contexts/Web3Context'
 import { toast } from 'react-hot-toast'
+import TransactionHistory from '../components/TransactionHistory'
+import TransactionLink from '../components/TransactionLink'
 import {
   CurrencyDollarIcon,
   CalendarIcon,
@@ -288,6 +290,11 @@ const ClientDashboard = () => {
             </div>
           )}
         </div>
+      </div>
+      
+      {/* Transaction History */}
+      <div className="mt-8">
+        <TransactionHistory limit={5} />
       </div>
 
       {/* Payment Modal */}
