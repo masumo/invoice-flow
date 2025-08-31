@@ -18,11 +18,5 @@
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ],
-  "env": {
-    "VITE_CONTRACT_ADDRESS": "@vite_contract_address",
-    "VITE_RPC_URL": "@vite_rpc_url",
-    "VITE_CHAIN_ID": "@vite_chain_id",
-    "VITE_NETWORK_NAME": "@vite_network_name"
-  }
+  ]
 }
