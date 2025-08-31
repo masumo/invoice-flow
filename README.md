@@ -4,15 +4,15 @@ A decentralized application for SME invoice financing on the XDC Network, enabli
 
 ## 🚀 Live Demo & Video
 
-- **Live Demo**: [Coming Soon - Deploy to Vercel/Netlify]
+- **Live Demo**: [Deploy to Vercel](https://vercel.com/new/clone?repository-url=https://github.com/masumo/invoiceflow)
 - **Demo Video**: [Coming Soon - YouTube Link]
 - **Presentation**: [Coming Soon - Pitch Deck]
 
 ## ⛓️ Smart Contract on Apothem
 
-- **Contract Address**: `[TO BE DEPLOYED]`
+- **Contract Address**: `0x67aC9ADE0e987782E73F3fd2CB367A2bB738dE7b`
 - **Network**: XDC Apothem Testnet (Chain ID: 51)
-- **Explorer**: [View on XDC Explorer](https://explorer.apothem.network/)
+- **Explorer**: [View on XDC Explorer](https://explorer.apothem.network/address/0x67aC9ADE0e987782E73F3fd2CB367A2bB738dE7b)
 
 ## 🎯 The Problem We Solve
 
@@ -204,6 +204,45 @@ Add XDC Apothem Network to MetaMask:
 - 🌍 Regional compliance
 - 🌍 Local currency support
 - 🌍 Government partnerships
+
+## 🚀 Deployment to Vercel
+
+### Quick Deploy
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/masumo/invoiceflow)
+
+### Manual Deployment
+
+1. **Fork/Clone the repository**
+   ```bash
+   git clone https://github.com/masumo/invoiceflow.git
+   cd invoiceflow
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Deploy to Vercel**
+   ```bash
+   # Install Vercel CLI
+   npm i -g vercel
+   
+   # Deploy
+   vercel
+   ```
+
+4. **Configure Environment Variables in Vercel Dashboard**
+   - `VITE_CONTRACT_ADDRESS`: `0x67aC9ADE0e987782E73F3fd2CB367A2bB738dE7b`
+   - `VITE_RPC_URL`: `https://rpc.apothem.network`
+   - `VITE_CHAIN_ID`: `51`
+   - `VITE_NETWORK_NAME`: `XDC Apothem Network`
+
+### Alternative Deployment Options
+
+- **Netlify**: Connect your GitHub repo and deploy automatically
+- **GitHub Pages**: Use GitHub Actions for static deployment
+- **Railway**: One-click deployment with database support
 
 ## 🤝 Contributing
 
