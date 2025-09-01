@@ -50,7 +50,6 @@ const ClientDashboard = () => {
     setPayingInvoice(invoice.id)
     try {
       await repayInvoice(invoice.id, invoice.faceValue)
-      toast.success('Invoice paid successfully!')
       setShowPaymentModal(false)
       setSelectedInvoice(null)
       // Reload invoices to update status
