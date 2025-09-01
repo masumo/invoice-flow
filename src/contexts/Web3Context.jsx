@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { ethers } from 'ethers'
 import toast from 'react-hot-toast'
 import { getTransactionUrl, getAddressUrl, formatTxHash, getNetworkName } from '../utils/blockchain'
@@ -42,8 +42,9 @@ export const Web3Provider = ({ children }) => {
   const [contract, setContract] = useState(null)
   const [chainId, setChainId] = useState(null)
   const [isConnecting, setIsConnecting] = useState(false)
-  const [transactionHistory, setTransactionHistory] = useState([])
   const [isCorrectNetwork, setIsCorrectNetwork] = useState(false)
+  const [transactionHistory, setTransactionHistory] = useState([])
+  const toastShownRef = useRef(new Set())
 
   const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS
   const TARGET_CHAIN_ID = parseInt(import.meta.env.VITE_CHAIN_ID || '51')
@@ -234,7 +235,6 @@ export const Web3Provider = ({ children }) => {
         gasLimit: gasLimit
       })
 
-      toast.success('Transaction submitted! Waiting for confirmation...')
       const receipt = await tx.wait()
       
       // Extract token ID from events
@@ -257,7 +257,13 @@ export const Web3Provider = ({ children }) => {
         tokenId ? tokenId.toString() : null
       )
       
-      toast.success('Invoice tokenized successfully!')
+      const toastKey = `tokenize-${receipt.hash}`
+      if (!toastShownRef.current.has(toastKey)) {
+        toastShownRef.current.add(toastKey)
+        setTimeout(() => {
+          toast.success('Invoice tokenized successfully!', { id: 'tokenize-success' })
+        }, 100)
+      }
       return { receipt, tokenId }
     } catch (error) {
       console.log('Full error:', error)
@@ -288,7 +294,6 @@ export const Web3Provider = ({ children }) => {
         value: salePriceWei // Use wei value directly
       })
 
-      toast.success('Transaction submitted! Waiting for confirmation...')
       const receipt = await tx.wait()
       
       // Add to transaction history
@@ -299,7 +304,13 @@ export const Web3Provider = ({ children }) => {
         tokenId
       )
       
-      toast.success('Invoice purchased successfully!')
+      const toastKey = `purchase-${receipt.hash}`
+      if (!toastShownRef.current.has(toastKey)) {
+        toastShownRef.current.add(toastKey)
+        setTimeout(() => {
+          toast.success('Invoice purchased successfully!', { id: 'purchase-success' })
+        }, 100)
+      }
       return receipt
     } catch (error) {
       console.error('Error buying invoice:', error)
@@ -323,7 +334,6 @@ export const Web3Provider = ({ children }) => {
         value: ethers.parseEther(faceValue.toString())
       })
 
-      toast.success('Transaction submitted! Waiting for confirmation...')
       const receipt = await tx.wait()
       
       // Add to transaction history
@@ -334,7 +344,13 @@ export const Web3Provider = ({ children }) => {
         tokenId
       )
       
-      toast.success('Invoice repaid successfully!')
+      const toastKey = `repay-${receipt.hash}`
+      if (!toastShownRef.current.has(toastKey)) {
+        toastShownRef.current.add(toastKey)
+        setTimeout(() => {
+          toast.success('Invoice repaid successfully!', { id: 'repay-success' })
+        }, 100)
+      }
       return receipt
     } catch (error) {
       console.error('Error repaying invoice:', error)

@@ -88,7 +88,6 @@ const InvoiceDetail = () => {
       // Store transaction hash for display
       setLastTransactionHash(receipt.hash)
       
-      toast.success('Invoice purchased successfully!')
       setShowConfirmModal(false)
       
       // Reload invoice data to show updated status

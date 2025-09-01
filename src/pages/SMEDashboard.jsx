@@ -105,7 +105,6 @@ const SMEDashboard = () => {
       // Store transaction hash for display
       setLastTransactionHash(receipt.hash)
       
-      toast.success('Invoice tokenized successfully!')
       setShowModal(false)
       setFormData({
         client: '',
@@ -353,12 +352,28 @@ const SMEDashboard = () => {
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             {/* Loading Overlay */}
             {submitting && (
-              <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10 rounded-md">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-                  <p className="text-gray-700 font-medium">Processing Transaction...</p>
-                  <p className="text-sm text-gray-500 mt-2">Please wait while your invoice is being tokenized</p>
-                  <p className="text-xs text-gray-400 mt-1">This may take a few moments</p>
+              <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center z-10 rounded-md">
+                <div className="bg-white rounded-xl p-8 shadow-2xl max-w-sm mx-4 transform transition-all duration-300">
+                  <div className="text-center">
+                    {/* Modern spinner with gradient */}
+                    <div className="relative mx-auto mb-6">
+                      <div className="w-16 h-16 border-4 border-gray-200 rounded-full"></div>
+                      <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+                      <div className="w-12 h-12 bg-primary-100 rounded-full absolute top-2 left-2 flex items-center justify-center">
+                        <div className="w-3 h-3 bg-primary-600 rounded-full animate-pulse"></div>
+                      </div>
+                    </div>
+                    
+                    {/* Text content with better spacing */}
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Processing Transaction</h3>
+                    <p className="text-sm text-gray-600 mb-3">Please wait while your invoice is being tokenized</p>
+                    <p className="text-xs text-gray-500">This may take a few moments</p>
+                    
+                    {/* Progress indicator */}
+                    <div className="mt-4 w-full bg-gray-200 rounded-full h-1.5">
+                      <div className="bg-primary-600 h-1.5 rounded-full animate-pulse" style={{width: '60%'}}></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
