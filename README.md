@@ -5,8 +5,8 @@ A decentralized application for SME invoice financing on the XDC Network, enabli
 ## 🚀 Live Demo & Video
 
 - **Live Demo**: [Vercel App](https://invoice-flow-jet.vercel.app/)
-- **Demo Video**: [Loom Video] (https://www.loom.com/share/b13ca7f5efca40a39573ea10b5e7a001?sid=caf57e3e-7381-4258-abbc-3676226b0ec6)
-- **Presentation**: [Gamma Site] (https://invoiceflow-revolutioniz-32p44ny.gamma.site/)
+- **Demo Video**: [Loom Video](https://www.loom.com/share/b13ca7f5efca40a39573ea10b5e7a001?sid=caf57e3e-7381-4258-abbc-3676226b0ec6)
+- **Presentation**: [Gamma Site](https://invoiceflow-revolutioniz-32p44ny.gamma.site/)
 
 ## ⛓️ Smart Contract on Apothem
 
@@ -67,11 +67,6 @@ XDC Network is the perfect blockchain for trade finance applications:
 - **Regulatory Compliance**: KYC/AML compatible architecture
 - **Enterprise Adoption**: Used by major trade finance institutions
 - **Interoperability**: Bridges to Ethereum and other networks
-
-### 🌍 **Global Reach**
-- **International Network**: Masternodes across 6 continents
-- **Banking Partnerships**: Integrated with traditional finance
-- **Developer Ecosystem**: Growing DeFi and RWA projects
 
 ## 🛠️ Tech Stack
 
