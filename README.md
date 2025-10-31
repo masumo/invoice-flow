@@ -4,7 +4,9 @@ A decentralized application for SME invoice financing on the XDC Network, enabli
 
 ## 🚀 Live Demo & Video
 
-- **Live Demo**: [Deploy to Vercel](https://vercel.com/new/clone?repository-url=https://github.com/masumo/invoiceflow)
+- **Flow Version (Latest)**: [https://invoice-flow-3i0h130wp-masumos-projects.vercel.app](https://invoice-flow-3i0h130wp-masumos-projects.vercel.app)
+- **XDC Legacy (Hackathon)**: [https://invoice-flow-qv4pdej95-masumos-projects.vercel.app](https://invoice-flow-qv4pdej95-masumos-projects.vercel.app)
+- **Deploy to Vercel**: [Deploy to Vercel](https://vercel.com/new/clone?repository-url=https://github.com/masumo/invoiceflow)
 - **Demo Video**: [Coming Soon - YouTube Link]
 - **Presentation**: [Coming Soon - Pitch Deck]
 
