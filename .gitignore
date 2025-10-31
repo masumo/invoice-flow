@@ -1,7 +1,93 @@
-node_modules
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment variables (CRITICAL for security)
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+out/
+
+# Vite
+.vite/
+
+# React
+.DS_Store
+*.tsbuildinfo
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output/
 
 # Hardhat files
 /cache
 /artifacts
+typechain/
+typechain-types/
+
+# Deployment and sensitive files
+deployment.json
+.openzeppelin/
+.secret
+
+# Vercel
 .vercel
+
+# Local development
+.temp/
+.tmp/
+
+# Backup files
+*.backup
+*.bak
+
+# Private keys and wallets (SECURITY)
+*.key
+*.pem
+wallet.json
+keystore/
+
+# Test files that might contain sensitive data
+test-results/
+playwright-report/
+test-results.xml
