@@ -1,6 +1,23 @@
 # InvoiceFlow
 
-A decentralized application for SME invoice financing on the XDC Network, enabling real-world asset tokenization and DeFi solutions for trade finance.
+A decentralized application for SME invoice financing on the Flow EVM Network, enabling real-world asset tokenization and DeFi solutions for trade finance.
+
+## 🎉 Forte Hacks Upgrade - What's New!
+
+This project is **InvoiceFlow** upgraded for **Forte Hacks**, running on the **Flow EVM** network.
+
+### 🚀 What's New (Hackathon Special Features):
+
+#### ⚡ **Flow Forte Integration**
+Utilizing **Forte Scheduled Transactions** to automate investor payments.
+
+#### 🤖 **100% Automated Payments** 
+Investors now receive their funds automatically (pushed) exactly on the due date, without needing to manually "claim" payments.
+
+#### 🔄 **Ported to Flow**
+Smart contracts (Solidity) and frontend have been migrated from XDC to **Flow EVM Testnet**.
+
+---
 
 ## 🚀 Live Demo & Video
 
@@ -8,11 +25,12 @@ A decentralized application for SME invoice financing on the XDC Network, enabli
 - **Demo Video**: [Loom Video](https://www.loom.com/share/b13ca7f5efca40a39573ea10b5e7a001?sid=caf57e3e-7381-4258-abbc-3676226b0ec6)
 - **Presentation**: [Gamma Site](https://invoiceflow-revolutioniz-32p44ny.gamma.site/)
 
-## ⛓️ Smart Contract on Apothem
+## ⛓️ Smart Contract on Flow EVM
 
-- **Contract Address**: `0x67aC9ADE0e987782E73F3fd2CB367A2bB738dE7b`
-- **Network**: XDC Apothem Testnet (Chain ID: 51)
-- **Explorer**: [View on XDC Explorer](https://testnet.xdcscan.com/address/0x67ac9ade0e987782e73f3fd2cb367a2bb738de7b)
+- **Network**: Flow EVM Testnet (Chain ID: 545)
+- **RPC URL**: `https://testnet.evm.nodes.onflow.org`
+- **Explorer**: [Flow EVM Explorer](https://evm-testnet.flowscan.io/)
+- **Previous Network**: Migrated from XDC Apothem Testnet
 
 ## 🎯 The Problem We Solve
 
@@ -31,7 +49,7 @@ Traditionally, invoice factoring and trade finance solutions are:
 
 ## ✨ Our Solution
 
-InvoiceFlow revolutionizes trade finance through **Real-World Asset (RWA) tokenization** on the XDC Network:
+InvoiceFlow revolutionizes trade finance through **Real-World Asset (RWA) tokenization** on the Flow EVM:
 
 ### 🏭 For SMEs (Invoice Issuers)
 - **Instant Liquidity**: Convert invoices to NFTs and sell them immediately
@@ -52,21 +70,21 @@ InvoiceFlow revolutionizes trade finance through **Real-World Asset (RWA) tokeni
 4. **Client Payment**: When due, clients pay the full invoice amount
 5. **Automatic Settlement**: Smart contracts distribute payments to investors
 
-## 💡 Why XDC Network?
+## 💡 Why Flow EVM?
 
-XDC Network is the perfect blockchain for trade finance applications:
+Flow EVM is the perfect blockchain for next-generation DeFi applications:
 
-### 🚀 **Performance & Cost**
-- **Low Transaction Fees**: ~$0.00001 per transaction
-- **Fast Finality**: 2-second block times
-- **High Throughput**: 2000+ TPS capacity
-- **Energy Efficient**: Delegated Proof of Stake consensus
+### 🚀 **Performance & Innovation**
+- **Low Transaction Fees**: Cost-effective transactions
+- **Fast Finality**: Quick transaction confirmation
+- **High Throughput**: Scalable infrastructure
+- **Forte Integration**: Advanced scheduled transaction capabilities
 
-### 🏢 **Enterprise Ready**
-- **Trade Finance Focus**: Built specifically for global trade
-- **Regulatory Compliance**: KYC/AML compatible architecture
-- **Enterprise Adoption**: Used by major trade finance institutions
-- **Interoperability**: Bridges to Ethereum and other networks
+### 🏢 **Developer & User Friendly**
+- **EVM Compatibility**: Full Ethereum tooling support
+- **Forte Scheduled Transactions**: Automated payment execution
+- **Modern Architecture**: Built for Web3 applications
+- **Growing Ecosystem**: Active developer community and hackathon support
 
 ## 🛠️ Tech Stack
 
@@ -74,7 +92,7 @@ XDC Network is the perfect blockchain for trade finance applications:
 - **Solidity**: Smart contract development (v0.8.20)
 - **OpenZeppelin**: Security-audited contract libraries
 - **Hardhat**: Development environment and testing
-- **XDC Network**: Blockchain infrastructure
+- **Flow EVM**: Blockchain infrastructure with Forte integration
 
 ### **Frontend & Web3**
 - **React.js**: Modern frontend framework
@@ -88,12 +106,13 @@ XDC Network is the perfect blockchain for trade finance applications:
 - Node.js (v16 or higher)
 - npm or yarn
 - MetaMask browser extension
-- XDC testnet tokens (from [XDC Faucet](https://faucet.apothem.network/))
+- Flow testnet tokens (from [Flow EVM Faucet](https://testnet-faucet.onflow.org/))
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/invoiceflow.git
-cd invoiceflow
+# Clone the Forte Hacks upgrade branch
+git clone -b forte-upgrade https://github.com/masumo/invoice-flow.git
+cd invoice-flow
 ```
 
 ### 2. Install Dependencies
@@ -111,9 +130,9 @@ Edit `.env` with your values:
 ```env
 PRIVATE_KEY=your_wallet_private_key_here
 VITE_CONTRACT_ADDRESS=deployed_contract_address
-VITE_RPC_URL=https://rpc.apothem.network
-VITE_CHAIN_ID=51
-VITE_NETWORK_NAME=XDC Apothem Network
+VITE_RPC_URL=https://testnet.evm.nodes.onflow.org
+VITE_CHAIN_ID=545
+VITE_NETWORK_NAME=Flow EVM Testnet
 ```
 
 ### 4. Deploy Smart Contract (Optional)
@@ -122,8 +141,8 @@ If you want to deploy your own contract:
 # Compile contracts
 npx hardhat compile
 
-# Deploy to XDC Apothem testnet
-npx hardhat run scripts/deploy.js --network apothem
+# Deploy to Flow EVM testnet
+npx hardhat run scripts/deploy.js --network flow-testnet
 ```
 
 ### 5. Start Development Server
@@ -134,12 +153,12 @@ npm run dev
 The application will be available at `http://localhost:5173`
 
 ### 6. Configure MetaMask
-Add XDC Apothem Network to MetaMask:
-- **Network Name**: XDC Apothem Network
-- **RPC URL**: https://rpc.apothem.network
-- **Chain ID**: 51
-- **Currency Symbol**: XDC
-- **Block Explorer**: https://explorer.apothem.network
+Add Flow EVM Testnet to MetaMask:
+- **Network Name**: Flow EVM Testnet
+- **RPC URL**: https://testnet.evm.nodes.onflow.org
+- **Chain ID**: 545
+- **Currency Symbol**: FLOW
+- **Block Explorer**: https://evm-testnet.flowscan.io
 
 ## 📱 Usage Guide
 
@@ -152,7 +171,7 @@ Add XDC Apothem Network to MetaMask:
 6. **Receive Payment**: Get immediate payment when an investor buys your invoice
 
 ### For Investors
-1. **Connect Wallet**: Connect your MetaMask wallet with XDC tokens
+1. **Connect Wallet**: Connect your MetaMask wallet with FLOW tokens
 2. **Browse Marketplace**: View available invoice NFTs
 3. **Analyze Opportunities**: Check ROI, due dates, and risk factors
 4. **Purchase Invoices**: Buy invoice NFTs at discounted prices
@@ -193,8 +212,8 @@ Add XDC Apothem Network to MetaMask:
 
 1. **Fork/Clone the repository**
    ```bash
-   git clone https://github.com/masumo/invoiceflow.git
-   cd invoiceflow
+   git clone -b forte-upgrade https://github.com/masumo/invoice-flow.git
+   cd invoice-flow
    ```
 
 2. **Install dependencies**
@@ -212,10 +231,10 @@ Add XDC Apothem Network to MetaMask:
    ```
 
 4. **Configure Environment Variables in Vercel Dashboard**
-   - `VITE_CONTRACT_ADDRESS`: `0x67aC9ADE0e987782E73F3fd2CB367A2bB738dE7b`
-   - `VITE_RPC_URL`: `https://rpc.apothem.network`
-   - `VITE_CHAIN_ID`: `51`
-   - `VITE_NETWORK_NAME`: `XDC Apothem Network`
+   - `VITE_CONTRACT_ADDRESS`: `your_deployed_contract_address`
+   - `VITE_RPC_URL`: `https://testnet.evm.nodes.onflow.org`
+   - `VITE_CHAIN_ID`: `545`
+   - `VITE_NETWORK_NAME`: `Flow EVM Testnet`
 
 
 ## 📄 License
@@ -223,6 +242,6 @@ Add XDC Apothem Network to MetaMask:
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 ---
 
-**Built with ❤️ for the XDC VIBES Hackathon**
+**Built with ❤️ for Forte Hacks**
 
 *Empowering global trade through decentralized finance*

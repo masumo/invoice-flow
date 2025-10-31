@@ -3,18 +3,18 @@ import { Link } from 'react-router-dom'
 
 const Footer = () => {
   return (
-    <footer className="bg-gray-900 text-white">
+    <footer className="bg-gray-900 text-white border-t border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-xdc-600 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-flow-500 to-flow-700 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">IF</span>
               </div>
               <span className="text-xl font-bold">InvoiceFlow</span>
             </div>
-            <p className="text-gray-400 mb-4 max-w-md">
+            <p className="text-gray-300 mb-4 max-w-md">
               Revolutionizing SME invoice financing through blockchain technology on the Flow Network. 
               Tokenize, trade, and finance invoices in a decentralized marketplace.
             </p>
@@ -91,47 +91,47 @@ const Footer = () => {
               </li>
               <li>
                 <a
-                  href="https://explorer.apothem.network"
+                  href="https://evm.flowscan.io"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-white transition-colors"
                 >
-                  Apothem Explorer
+                  Flow Explorer
                 </a>
               </li>
               <li>
                 <a
-                  href="https://faucet.apothem.network"
+                  href="https://testnet-faucet.onflow.org"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-white transition-colors"
                 >
-                  Testnet Faucet
+                  Flow Faucet
                 </a>
               </li>
               <li>
                 <a
-                  href="https://docs.xinfin.org"
+                  href="https://developers.flow.com"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-white transition-colors"
                 >
-                  Documentation
+                  Flow Documentation
                 </a>
               </li>
             </ul>
           </div>
         </div>
 
-        <div className="mt-8 pt-8 border-t border-gray-800">
+        <div className="mt-8 pt-8 border-t border-gray-700">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400 text-sm">
-              © 2024 InvoiceFlow. Built for Flow Hackathon. Open source under MIT License.
+              © 2024 InvoiceFlow. Built for Forte Hacks. Open source under MIT License.
             </p>
             <div className="mt-4 md:mt-0 flex items-center space-x-4">
               <span className="text-gray-400 text-sm">Powered by</span>
               <div className="flex items-center space-x-2">
-                <span className="text-blue-400 font-semibold">Flow Network</span>
+                <span className="text-flow-400 font-semibold">Flow Network</span>
               </div>
             </div>
           </div>

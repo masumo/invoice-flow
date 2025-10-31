@@ -24,9 +24,9 @@ const NetworkDisplay = () => {
       case 747:
         return 'Flow EVM Mainnet'
       case 51:
-        return 'XDC Apothem Network'
+        return 'Flow Testnet'
       case 50:
-        return 'XDC Network'
+        return 'Flow Network'
       case 1:
         return 'Ethereum Mainnet'
       case 5:

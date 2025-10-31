@@ -64,7 +64,7 @@
   }
   
   .gradient-bg {
-    @apply bg-gradient-to-br from-primary-500 to-xdc-600;
+    @apply bg-gradient-to-br from-flow-500 to-flow-700;
   }
   
   .loading-spinner {
