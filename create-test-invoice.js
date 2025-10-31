@@ -21,8 +21,9 @@ async function createTestInvoice() {
     console.log('Sale Price:', ethers.formatEther(salePrice), 'XDC');
     console.log('Due Date:', new Date(dueDate * 1000).toLocaleDateString());
     
-    const tx = await contract.tokenizeInvoice(
-      client.address,
+    const tx = await contract.mint(
+      deployer.address, // SME address (to)
+      client.address,   // client address
       faceValue,
       salePrice,
       dueDate,
@@ -44,7 +45,8 @@ async function createTestInvoice() {
     });
     
     if (event) {
-      const tokenId = contract.interface.parseLog(event).args.tokenId;
+      const parsedEvent = contract.interface.parseLog(event);
+      const tokenId = parsedEvent.args.tokenId;
       console.log('Invoice tokenized with ID:', tokenId.toString());
       
       // Verify the invoice was created

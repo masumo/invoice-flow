@@ -16,7 +16,7 @@ const ConnectWallet = () => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`
   }
 
-  if (!isMetaMaskInstalled) {
+  if (!isMetaMaskInstalled && !account) {
     return (
       <div className="flex items-center space-x-2">
         <a

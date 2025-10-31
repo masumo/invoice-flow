@@ -1,60 +1,56 @@
-// Blockchain utility functions for XDC Network
+// Blockchain utility functions for Flow EVM
 
 /**
- * Get the appropriate XDCScan explorer URL based on network
+ * Get the appropriate Flowscan explorer URL based on network
  * @param {string} chainId - The chain ID
- * @returns {string} - Base URL for XDCScan explorer
+ * @returns {string} - Base URL for Flowscan explorer
  */
-export const getXDCScanBaseUrl = (chainId) => {
+export const getFlowscanBaseUrl = (chainId) => {
   switch (chainId) {
-    case '50': // XDC Mainnet
-      return 'https://xdcscan.io'
-    case '51': // XDC Apothem Testnet
-      return 'https://apothem.xdcscan.io'
+    case '747': // Flow EVM Mainnet
+      return 'https://flowscan.org'
+    case '545': // Flow EVM Testnet (current)
+    case '646': // Flow EVM Testnet (old)
+      return 'https://evm-testnet.flowscan.io'
     case '1337': // Local Hardhat (fallback to testnet for demo)
-      return 'https://apothem.xdcscan.io'
+      return 'https://evm-testnet.flowscan.io'
     default:
-      return 'https://apothem.xdcscan.io' // Default to testnet
+      return 'https://evm-testnet.flowscan.io' // Default to testnet
   }
 }
 
 /**
- * Generate XDCScan transaction URL
+ * Generate Flowscan transaction URL
  * @param {string} txHash - Transaction hash
  * @param {string} chainId - Chain ID
- * @returns {string} - Complete URL to view transaction on XDCScan
+ * @returns {string} - Complete URL to view transaction on Flowscan
  */
-export const getTransactionUrl = (txHash, chainId = '51') => {
-  const baseUrl = getXDCScanBaseUrl(chainId)
-  // Convert 0x prefix to xdc prefix for XDC network
-  const xdcTxHash = txHash.startsWith('0x') ? txHash.replace('0x', 'xdc') : txHash
-  return `${baseUrl}/tx/${xdcTxHash}`
+export const getTransactionUrl = (txHash, chainId = '545') => {
+  const baseUrl = getFlowscanBaseUrl(chainId)
+  return `${baseUrl}/tx/${txHash}`
 }
 
 /**
- * Generate XDCScan address URL
+ * Generate Flowscan address URL
  * @param {string} address - Wallet/contract address
  * @param {string} chainId - Chain ID
- * @returns {string} - Complete URL to view address on XDCScan
+ * @returns {string} - Complete URL to view address on Flowscan
  */
-export const getAddressUrl = (address, chainId = '51') => {
-  const baseUrl = getXDCScanBaseUrl(chainId)
-  // Convert 0x prefix to xdc prefix for XDC network
-  const xdcAddress = address.startsWith('0x') ? address.replace('0x', 'xdc') : address
-  return `${baseUrl}/address/${xdcAddress}`
+export const getAddressUrl = (address, chainId = '545') => {
+  const baseUrl = getFlowscanBaseUrl(chainId)
+  return `${baseUrl}/address/${address}`
 }
 
 /**
- * Generate XDCScan token URL
+ * Generate Flowscan token URL
  * @param {string} contractAddress - Token contract address
  * @param {string} tokenId - Token ID
  * @param {string} chainId - Chain ID
- * @returns {string} - Complete URL to view token on XDCScan
+ * @returns {string} - Complete URL to view token on Flowscan
  */
-export const getTokenUrl = (contractAddress, tokenId, chainId = '51') => {
-  const baseUrl = getXDCScanBaseUrl(chainId)
-  const xdcAddress = contractAddress.startsWith('0x') ? contractAddress.replace('0x', 'xdc') : contractAddress
-  return `${baseUrl}/token/${xdcAddress}?a=${tokenId}`
+export const getTokenUrl = (contractAddress, tokenId, chainId = '545') => {
+  const baseUrl = getFlowscanBaseUrl(chainId)
+  return `${baseUrl}/token/${contractAddress}?a=${tokenId}`
 }
 
 /**
@@ -68,12 +64,12 @@ export const formatTxHash = (txHash) => {
 }
 
 /**
- * Check if we're on XDC network
+ * Check if we're on Flow EVM network
  * @param {string} chainId - Chain ID
- * @returns {boolean} - True if on XDC network
+ * @returns {boolean} - True if on Flow EVM network
  */
-export const isXDCNetwork = (chainId) => {
-  return ['50', '51'].includes(chainId)
+export const isFlowNetwork = (chainId) => {
+  return ['747', '646'].includes(chainId)
 }
 
 /**
@@ -83,10 +79,10 @@ export const isXDCNetwork = (chainId) => {
  */
 export const getNetworkName = (chainId) => {
   switch (chainId) {
-    case '50':
-      return 'XDC Mainnet'
-    case '51':
-      return 'XDC Apothem Testnet'
+    case '747':
+      return 'Flow EVM Mainnet'
+    case '646':
+      return 'Flow EVM Testnet'
     case '1337':
       return 'Hardhat Local'
     default:

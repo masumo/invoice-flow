@@ -19,6 +19,10 @@ const NetworkDisplay = () => {
 
   const getNetworkName = (id) => {
     switch (id) {
+      case 545:
+        return 'Flow EVM Testnet'
+      case 747:
+        return 'Flow EVM Mainnet'
       case 51:
         return 'XDC Apothem Network'
       case 50:

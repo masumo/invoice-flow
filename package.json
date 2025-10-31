@@ -1,14 +1,15 @@
 {
   "name": "invoiceflow",
   "version": "1.0.0",
-  "description": "A decentralized application for SME invoice financing on XDC Network",
+  "description": "A decentralized application for SME invoice financing on Flow EVM",
   "main": "index.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "compile": "hardhat compile",
-    "deploy": "hardhat run scripts/deploy.js --network apothem",
+    "deploy:testnet": "hardhat run scripts/deploy.js --network flowTestnet",
+    "deploy:mainnet": "hardhat run scripts/deploy.js --network flowMainnet",
     "deploy:local": "hardhat run scripts/deploy.js --network localhost",
     "test": "hardhat test",
     "node": "hardhat node"
@@ -19,7 +20,8 @@
     "rwa",
     "invoice",
     "financing",
-    "xdc",
+    "flow",
+    "evm",
     "nft",
     "tokenization"
   ],

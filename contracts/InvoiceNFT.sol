@@ -8,8 +8,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 
 /**
  * @title InvoiceNFT
- * @dev A smart contract for tokenizing invoices as NFTs on the XDC Network
- * @notice This contract enables SMEs to tokenize their invoices and sell them to investors
+ * @dev Core contract for invoice NFTs on Flow EVM
  */
 contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
     // Counter for generating unique token IDs
@@ -17,13 +16,8 @@ contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
     
     // Platform fee percentage (in basis points, e.g., 250 = 2.5%)
     uint256 public platformFee = 250;
-    
-    // Maximum platform fee that can be set (5%)
     uint256 public constant MAX_PLATFORM_FEE = 500;
     
-    /**
-     * @dev Enum representing the status of an invoice
-     */
     enum Status {
         OnMarket,   // Invoice is available for purchase
         Sold,       // Invoice has been purchased by an investor
@@ -31,13 +25,10 @@ contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
         Defaulted   // Invoice has defaulted (past due date)
     }
     
-    /**
-     * @dev Struct containing all invoice data
-     */
     struct Invoice {
         uint256 id;           // Unique identifier for the invoice
         address sme;          // Address of the SME that created the invoice
-        address investor;     // Address of the investor who bought the invoice
+        address investor;     // Address of the current investor (if sold)
         address client;       // Address of the client who owes the invoice
         uint256 faceValue;    // Full amount owed by the client
         uint256 salePrice;    // Discounted price for investors
@@ -47,30 +38,20 @@ contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
         uint256 createdAt;    // Timestamp when invoice was tokenized
     }
     
-    // Mapping from token ID to invoice data
+    // Storage mappings
     mapping(uint256 => Invoice) public invoices;
-    
-    // Mapping to track invoices by status for efficient querying
     mapping(Status => uint256[]) private invoicesByStatus;
-    
-    // Mapping to track invoices by owner for efficient querying
     mapping(address => uint256[]) private invoicesByOwner;
-    
-    // Mapping to track invoices by client for efficient querying
     mapping(address => uint256[]) private invoicesByClient;
-    
-    // Mapping to track invoices by SME for efficient querying
     mapping(address => uint256[]) private invoicesBySME;
     
-    // Mapping to track invoice positions in arrays for efficient removal
+    // Index tracking mappings
     mapping(uint256 => mapping(Status => uint256)) private invoiceStatusIndex;
     mapping(uint256 => mapping(address => uint256)) private invoiceOwnerIndex;
     mapping(uint256 => mapping(address => uint256)) private invoiceClientIndex;
     mapping(uint256 => mapping(address => uint256)) private invoiceSMEIndex;
     
-    /**
-     * @dev Events for tracking important contract interactions
-     */
+    // Events
     event InvoiceTokenized(
         uint256 indexed tokenId,
         address indexed sme,
@@ -103,48 +84,51 @@ contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
     
     event PlatformFeeUpdated(uint256 oldFee, uint256 newFee);
     
-    /**
-     * @dev Constructor initializes the ERC721 token
-     */
+    // Authorized minter
+    address public authorizedMinter;
+    // Authorized settler
+    address public authorizedSettler;
+    // Authorized purchaser
+    address public authorizedPurchaser;
+
+    event AuthorizedMinterUpdated(address oldMinter, address newMinter);
+    event AuthorizedSettlerUpdated(address oldSettler, address newSettler);
+    event AuthorizedPurchaserUpdated(address oldPurchaser, address newPurchaser);
+
     constructor() ERC721("InvoiceFlow NFT", "INVOICE") Ownable(msg.sender) {
-        _tokenIdCounter = 1; // Start token IDs from 1
+        _tokenIdCounter = 1;
+    }
+
+    function setAuthorizedMinter(address minter) external onlyOwner {
+        address oldMinter = authorizedMinter;
+        authorizedMinter = minter;
+        emit AuthorizedMinterUpdated(oldMinter, minter);
+    }
+
+    function setAuthorizedSettler(address settler) external onlyOwner {
+        address oldSettler = authorizedSettler;
+        authorizedSettler = settler;
+        emit AuthorizedSettlerUpdated(oldSettler, settler);
+    }
+
+    function setAuthorizedPurchaser(address purchaser) external onlyOwner {
+        address oldPurchaser = authorizedPurchaser;
+        authorizedPurchaser = purchaser;
+        emit AuthorizedPurchaserUpdated(oldPurchaser, purchaser);
     }
     
-    /**
-     * @dev Modifier to check if caller is the SME of a specific invoice
-     */
-    modifier onlySME(uint256 tokenId) {
-        require(invoices[tokenId].sme == msg.sender, "Only SME can perform this action");
-        _;
-    }
-    
-    /**
-     * @dev Modifier to check if caller is the client of a specific invoice
-     */
-    modifier onlyClient(uint256 tokenId) {
-        require(invoices[tokenId].client == msg.sender, "Only client can perform this action");
-        _;
-    }
-    
-    /**
-     * @dev Tokenize an invoice as an NFT
-     * @param client Address of the client who owes the invoice
-     * @param faceValue Full amount owed by the client (in wei)
-     * @param salePrice Discounted price for investors (in wei)
-     * @param dueDate Unix timestamp when payment is due
-     * @param invoiceURI IPFS URI containing invoice metadata
-     * @return tokenId The ID of the newly minted invoice NFT
-     */
-    function tokenizeInvoice(
+    // Core NFT functionality
+    function mint(
+        address to,
         address client,
         uint256 faceValue,
         uint256 salePrice,
         uint256 dueDate,
         string memory invoiceURI
     ) external whenNotPaused nonReentrant returns (uint256) {
-        // Input validation
+        require(msg.sender == owner() || msg.sender == authorizedMinter, "Not authorized to mint");
         require(client != address(0), "Client address cannot be zero");
-        require(client != msg.sender, "SME cannot be the client");
+        require(client != to, "SME cannot be the client");
         require(faceValue > 0, "Face value must be greater than zero");
         require(salePrice > 0, "Sale price must be greater than zero");
         require(salePrice < faceValue, "Sale price must be less than face value");
@@ -154,10 +138,9 @@ contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
         uint256 tokenId = _tokenIdCounter;
         _tokenIdCounter++;
         
-        // Create the invoice struct
         invoices[tokenId] = Invoice({
             id: tokenId,
-            sme: msg.sender,
+            sme: to,
             investor: address(0),
             client: client,
             faceValue: faceValue,
@@ -168,18 +151,16 @@ contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
             createdAt: block.timestamp
         });
         
-        // Mint the NFT to the SME
-        _safeMint(msg.sender, tokenId);
+        _safeMint(to, tokenId);
         
-        // Add to tracking arrays
         _addToStatusArray(tokenId, Status.OnMarket);
-        _addToOwnerArray(tokenId, msg.sender);
+        _addToOwnerArray(tokenId, to);
         _addToClientArray(tokenId, client);
-        _addToSMEArray(tokenId, msg.sender);
+        _addToSMEArray(tokenId, to);
         
         emit InvoiceTokenized(
             tokenId,
-            msg.sender,
+            to,
             client,
             faceValue,
             salePrice,
@@ -190,169 +171,39 @@ contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
         return tokenId;
     }
     
-    /**
-     * @dev Buy an invoice NFT from the marketplace
-     * @param tokenId ID of the invoice NFT to purchase
-     */
-    function buyInvoice(uint256 tokenId) external payable whenNotPaused nonReentrant {
-        Invoice storage invoice = invoices[tokenId];
-        
-        // Validation checks
-        require(invoice.status == Status.OnMarket, "Invoice is not available for sale");
-        require(msg.sender != invoice.sme, "SME cannot buy their own invoice");
-        require(msg.sender != invoice.client, "Client cannot buy the invoice");
-        require(msg.value == invoice.salePrice, "Incorrect payment amount");
-        require(block.timestamp < invoice.dueDate, "Invoice has expired");
-        
-        address sme = invoice.sme;
-        uint256 salePrice = invoice.salePrice;
-        
-        // Calculate platform fee
-        uint256 fee = (salePrice * platformFee) / 10000;
-        uint256 smeAmount = salePrice - fee;
-        
-        // Update invoice status and investor
-        invoice.status = Status.Sold;
-        invoice.investor = msg.sender;
-        
-        // Update tracking arrays
-        _removeFromStatusArray(tokenId, Status.OnMarket);
-        _addToStatusArray(tokenId, Status.Sold);
-        _removeFromOwnerArray(tokenId, sme);
-        _addToOwnerArray(tokenId, msg.sender);
-        
-        // Transfer the NFT to the investor
-        _transfer(sme, msg.sender, tokenId);
-        
-        // Transfer payments
-        (bool smeSuccess, ) = payable(sme).call{value: smeAmount}("");
-        require(smeSuccess, "Payment to SME failed");
-        
-        if (fee > 0) {
-            (bool feeSuccess, ) = payable(owner()).call{value: fee}("");
-            require(feeSuccess, "Platform fee transfer failed");
-        }
-        
-        emit InvoiceSold(tokenId, sme, msg.sender, salePrice);
-    }
-    
-    /**
-     * @dev Repay an invoice (called by the client)
-     * @param tokenId ID of the invoice NFT to repay
-     */
-    function repayInvoice(uint256 tokenId) external payable onlyClient(tokenId) whenNotPaused nonReentrant {
-        Invoice storage invoice = invoices[tokenId];
-        
-        require(invoice.status == Status.Sold, "Invoice must be sold to be repaid");
-        require(msg.value == invoice.faceValue, "Incorrect repayment amount");
-        require(block.timestamp <= invoice.dueDate, "Invoice payment is overdue");
-        
-        address investor = invoice.investor;
-        uint256 faceValue = invoice.faceValue;
-        
-        // Update invoice status
-        invoice.status = Status.Repaid;
-        
-        // Update tracking arrays
-        _removeFromStatusArray(tokenId, Status.Sold);
-        _addToStatusArray(tokenId, Status.Repaid);
-        
-        // Transfer the full face value to the investor
-        (bool success, ) = payable(investor).call{value: faceValue}("");
-        require(success, "Payment to investor failed");
-        
-        emit InvoiceRepaid(tokenId, investor, msg.sender, faceValue);
-    }
-    
-    /**
-     * @dev Mark an invoice as defaulted (can be called by anyone after due date)
-     * @param tokenId ID of the invoice NFT to mark as defaulted
-     */
-    function markAsDefaulted(uint256 tokenId) external whenNotPaused {
-        Invoice storage invoice = invoices[tokenId];
-        
-        require(invoice.status == Status.Sold, "Invoice must be sold to default");
-        require(block.timestamp > invoice.dueDate, "Invoice is not yet overdue");
-        
-        // Update invoice status
-        invoice.status = Status.Defaulted;
-        
-        // Update tracking arrays
-        _removeFromStatusArray(tokenId, Status.Sold);
-        _addToStatusArray(tokenId, Status.Defaulted);
-        
-        emit InvoiceDefaulted(tokenId, invoice.investor, invoice.faceValue);
-    }
-    
-    /**
-     * @dev Get invoices by status
-     * @param status The status to filter by
-     * @return Array of token IDs with the specified status
-     */
-    function getInvoicesByStatus(Status status) external view returns (uint256[] memory) {
-        return invoicesByStatus[status];
-    }
-    
-    /**
-     * @dev Get invoices by owner
-     * @param owner The owner address to filter by
-     * @return Array of token IDs owned by the specified address
-     */
-    function getInvoicesByOwner(address owner) external view returns (uint256[] memory) {
-        return invoicesByOwner[owner];
-    }
-    
-    /**
-     * @dev Get invoices by client
-     * @param client The client address to filter by
-     * @return Array of token IDs where the specified address is the client
-     */
-    function getInvoicesByClient(address client) external view returns (uint256[] memory) {
-        return invoicesByClient[client];
-    }
-    
-    /**
-     * @dev Get invoices by SME
-     * @param sme The SME address to filter by
-     * @return Array of token IDs created by the specified SME
-     */
-    function getInvoicesBySME(address sme) external view returns (uint256[] memory) {
-        return invoicesBySME[sme];
-    }
-    
-    /**
-     * @dev Get detailed information about an invoice
-     * @param tokenId The token ID to query
-     * @return The complete invoice struct
-     */
+    // View functions
     function getInvoice(uint256 tokenId) external view returns (Invoice memory) {
         require(_ownerOf(tokenId) != address(0), "Invoice does not exist");
         return invoices[tokenId];
     }
     
-    /**
-     * @dev Get the total number of invoices created
-     * @return The total count of invoices
-     */
+    function getInvoicesByStatus(Status status) external view returns (uint256[] memory) {
+        return invoicesByStatus[status];
+    }
+    
+    function getInvoicesByOwner(address owner) external view returns (uint256[] memory) {
+        return invoicesByOwner[owner];
+    }
+    
+    function getInvoicesByClient(address client) external view returns (uint256[] memory) {
+        return invoicesByClient[client];
+    }
+    
+    function getInvoicesBySME(address sme) external view returns (uint256[] memory) {
+        return invoicesBySME[sme];
+    }
+    
     function getTotalInvoices() external view returns (uint256) {
         return _tokenIdCounter - 1;
     }
     
-    /**
-     * @dev Calculate potential profit for an invoice
-     * @param tokenId The token ID to calculate profit for
-     * @return The potential profit amount
-     */
     function calculateProfit(uint256 tokenId) external view returns (uint256) {
         Invoice memory invoice = invoices[tokenId];
         require(invoice.faceValue > invoice.salePrice, "Invalid invoice data");
         return invoice.faceValue - invoice.salePrice;
     }
     
-    /**
-     * @dev Set the platform fee (only owner)
-     * @param newFee The new platform fee in basis points
-     */
+    // Admin functions
     function setPlatformFee(uint256 newFee) external onlyOwner {
         require(newFee <= MAX_PLATFORM_FEE, "Fee exceeds maximum allowed");
         uint256 oldFee = platformFee;
@@ -360,23 +211,14 @@ contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
         emit PlatformFeeUpdated(oldFee, newFee);
     }
     
-    /**
-     * @dev Pause the contract (only owner)
-     */
     function pause() external onlyOwner {
         _pause();
     }
     
-    /**
-     * @dev Unpause the contract (only owner)
-     */
     function unpause() external onlyOwner {
         _unpause();
     }
     
-    /**
-     * @dev Withdraw accumulated platform fees (only owner)
-     */
     function withdrawFees() external onlyOwner {
         uint256 balance = address(this).balance;
         require(balance > 0, "No fees to withdraw");
@@ -385,17 +227,12 @@ contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
         require(success, "Fee withdrawal failed");
     }
     
-    /**
-     * @dev Internal function to add invoice to status array
-     */
+    // Internal array management functions
     function _addToStatusArray(uint256 tokenId, Status status) private {
         invoicesByStatus[status].push(tokenId);
         invoiceStatusIndex[tokenId][status] = invoicesByStatus[status].length - 1;
     }
     
-    /**
-     * @dev Internal function to remove invoice from status array
-     */
     function _removeFromStatusArray(uint256 tokenId, Status status) private {
         uint256[] storage statusArray = invoicesByStatus[status];
         uint256 index = invoiceStatusIndex[tokenId][status];
@@ -411,17 +248,11 @@ contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
         delete invoiceStatusIndex[tokenId][status];
     }
     
-    /**
-     * @dev Internal function to add invoice to owner array
-     */
     function _addToOwnerArray(uint256 tokenId, address owner) private {
         invoicesByOwner[owner].push(tokenId);
         invoiceOwnerIndex[tokenId][owner] = invoicesByOwner[owner].length - 1;
     }
     
-    /**
-     * @dev Internal function to remove invoice from owner array
-     */
     function _removeFromOwnerArray(uint256 tokenId, address owner) private {
         uint256[] storage ownerArray = invoicesByOwner[owner];
         uint256 index = invoiceOwnerIndex[tokenId][owner];
@@ -437,17 +268,11 @@ contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
         delete invoiceOwnerIndex[tokenId][owner];
     }
     
-    /**
-     * @dev Internal function to add invoice to client array
-     */
     function _addToClientArray(uint256 tokenId, address client) private {
         invoicesByClient[client].push(tokenId);
         invoiceClientIndex[tokenId][client] = invoicesByClient[client].length - 1;
     }
     
-    /**
-     * @dev Internal function to remove invoice from client array
-     */
     function _removeFromClientArray(uint256 tokenId, address client) private {
         uint256[] storage clientArray = invoicesByClient[client];
         uint256 index = invoiceClientIndex[tokenId][client];
@@ -463,17 +288,11 @@ contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
         delete invoiceClientIndex[tokenId][client];
     }
     
-    /**
-     * @dev Internal function to add invoice to SME array
-     */
     function _addToSMEArray(uint256 tokenId, address sme) private {
         invoicesBySME[sme].push(tokenId);
         invoiceSMEIndex[tokenId][sme] = invoicesBySME[sme].length - 1;
     }
     
-    /**
-     * @dev Internal function to remove invoice from SME array
-     */
     function _removeFromSMEArray(uint256 tokenId, address sme) private {
         uint256[] storage smeArray = invoicesBySME[sme];
         uint256 index = invoiceSMEIndex[tokenId][sme];
@@ -489,18 +308,88 @@ contract InvoiceNFT is ERC721, Ownable, ReentrancyGuard, Pausable {
         delete invoiceSMEIndex[tokenId][sme];
     }
     
-    /**
-     * @dev Override tokenURI to return invoice metadata URI
-     */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         require(_ownerOf(tokenId) != address(0), "URI query for nonexistent token");
         return invoices[tokenId].invoiceURI;
     }
     
-    /**
-     * @dev Override supportsInterface for ERC721 and additional interfaces
-     */
     function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
         return super.supportsInterface(interfaceId);
+    }
+
+    // Status update functions
+    function markAsRepaid(uint256 tokenId) external {
+        require(msg.sender == owner() || msg.sender == authorizedSettler, "Not authorized to settle");
+        require(_ownerOf(tokenId) != address(0), "Invoice does not exist");
+        Invoice storage invoice = invoices[tokenId];
+        require(invoice.status == Status.Sold, "Invoice not in sold state");
+
+        _removeFromStatusArray(tokenId, Status.Sold);
+        invoice.status = Status.Repaid;
+        _addToStatusArray(tokenId, Status.Repaid);
+
+        emit InvoiceRepaid(
+            tokenId,
+            invoice.investor,
+            invoice.client,
+            invoice.faceValue
+        );
+    }
+
+    function markAsDefaulted(uint256 tokenId) external {
+        require(msg.sender == owner() || msg.sender == authorizedSettler, "Not authorized to settle");
+        require(_ownerOf(tokenId) != address(0), "Invoice does not exist");
+        Invoice storage invoice = invoices[tokenId];
+        require(invoice.status == Status.Sold, "Invoice not in sold state");
+
+        _removeFromStatusArray(tokenId, Status.Sold);
+        invoice.status = Status.Defaulted;
+        _addToStatusArray(tokenId, Status.Defaulted);
+
+        emit InvoiceDefaulted(
+            tokenId,
+            invoice.investor,
+            invoice.faceValue
+        );
+    }
+    
+    /**
+     * @dev Update invoice status and transfer ownership if needed
+     * @param tokenId The ID of the invoice to update
+     * @param newStatus The new status to set
+     * @param newOwner The new owner address (if status is Sold)
+     */
+    function updateInvoiceStatus(
+        uint256 tokenId,
+        Status newStatus,
+        address newOwner
+    ) external {
+        require(msg.sender == owner() || _ownerOf(tokenId) == _msgSender() || getApproved(tokenId) == _msgSender() || isApprovedForAll(_ownerOf(tokenId), _msgSender()) || msg.sender == authorizedPurchaser, "Not authorized");
+        require(_ownerOf(tokenId) != address(0), "Invoice does not exist");
+        
+        Invoice storage invoice = invoices[tokenId];
+        Status oldStatus = invoice.status;
+        
+        // Remove from old status array
+        _removeFromStatusArray(tokenId, oldStatus);
+        
+        // Update status
+        invoice.status = newStatus;
+        
+        // Add to new status array
+        _addToStatusArray(tokenId, newStatus);
+        
+        // If status is Sold, update owner and investor
+        if (newStatus == Status.Sold) {
+            require(newOwner != address(0), "Invalid new owner");
+            invoice.investor = newOwner;
+            _transfer(invoice.sme, newOwner, tokenId);
+            
+            // Update owner arrays
+            _removeFromOwnerArray(tokenId, invoice.sme);
+            _addToOwnerArray(tokenId, newOwner);
+            
+            emit InvoiceSold(tokenId, invoice.sme, newOwner, invoice.salePrice);
+        }
     }
 }

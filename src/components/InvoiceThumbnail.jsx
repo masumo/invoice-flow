@@ -3,7 +3,7 @@ import React from 'react'
 const InvoiceThumbnail = ({ invoiceId, className = "w-16 h-16" }) => {
   // Generate deterministic colors based on invoice ID
   const generateColors = (id) => {
-    const seed = parseInt(id.toString()) || 1
+    const seed = parseInt(id?.toString() || '1') || 1
     const hue1 = (seed * 137.508) % 360 // Golden angle approximation
     const hue2 = (hue1 + 60) % 360
     const hue3 = (hue1 + 120) % 360
@@ -17,7 +17,7 @@ const InvoiceThumbnail = ({ invoiceId, className = "w-16 h-16" }) => {
 
   // Generate geometric pattern based on invoice ID
   const generatePattern = (id) => {
-    const seed = parseInt(id.toString()) || 1
+    const seed = parseInt(id?.toString() || '1') || 1
     const patterns = [
       'circles',
       'triangles', 
@@ -28,9 +28,10 @@ const InvoiceThumbnail = ({ invoiceId, className = "w-16 h-16" }) => {
     return patterns[seed % patterns.length]
   }
 
-  const colors = generateColors(invoiceId)
-  const pattern = generatePattern(invoiceId)
-  const seed = parseInt(invoiceId.toString()) || 1
+  const safeInvoiceId = invoiceId || '1'
+  const colors = generateColors(safeInvoiceId)
+  const pattern = generatePattern(safeInvoiceId)
+  const seed = parseInt(safeInvoiceId.toString()) || 1
 
   // Create unique SVG based on pattern type
   const renderPattern = () => {
@@ -111,7 +112,7 @@ const InvoiceThumbnail = ({ invoiceId, className = "w-16 h-16" }) => {
           fontWeight="bold"
           opacity="0.8"
         >
-          #{invoiceId.toString().slice(-3)}
+          #{safeInvoiceId.toString().slice(-3)}
         </text>
       </svg>
     </div>

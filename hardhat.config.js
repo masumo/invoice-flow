@@ -21,44 +21,44 @@ module.exports = {
       url: "http://127.0.0.1:8545",
       chainId: 1337,
     },
-    // XDC Apothem Testnet
-    apothem: {
-      url: "https://rpc.apothem.network",
-      chainId: 51,
+    // Flow EVM Testnet
+    flowTestnet: {
+      url: "https://testnet.evm.nodes.onflow.org",
+      chainId: 545,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      gasPrice: 12500000000, // 12.5 gwei (XDC 2.0 network requirement)
-      gas: 8000000,
+      gasPrice: "auto",
+      gas: "auto",
     },
-    // XDC Mainnet (for future deployment)
-    xdc: {
-      url: "https://rpc.xinfin.network",
-      chainId: 50,
+    // Flow EVM Mainnet (for future deployment)
+    flowMainnet: {
+      url: "https://evm.nodes.onflow.org",
+      chainId: 546,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      gasPrice: 250000000, // 0.25 gwei
-      gas: 8000000,
-    },
+      gasPrice: "auto",
+      gas: "auto",
+    }
   },
   etherscan: {
-    // XDC Explorer API configuration
+    // Flow Explorer API configuration
     apiKey: {
-      apothem: "abc", // Placeholder - XDC explorer doesn't require API key
-      xdc: "abc",
+      flowTestnet: process.env.FLOW_EXPLORER_API_KEY || "",
+      flowMainnet: process.env.FLOW_EXPLORER_API_KEY || "",
     },
     customChains: [
       {
-        network: "apothem",
-        chainId: 51,
+        network: "flowTestnet",
+        chainId: 545,
         urls: {
-          apiURL: "https://explorer.apothem.network/api",
-          browserURL: "https://explorer.apothem.network",
+          apiURL: "https://evm-testnet.flowscan.io/api",
+      browserURL: "https://evm-testnet.flowscan.io",
         },
       },
       {
-        network: "xdc",
-        chainId: 50,
+        network: "flowMainnet",
+        chainId: 546,
         urls: {
-          apiURL: "https://explorer.xinfin.network/api",
-          browserURL: "https://explorer.xinfin.network",
+          apiURL: "https://flowscan.org/api",
+          browserURL: "https://flowscan.org",
         },
       },
     ],

@@ -4,15 +4,15 @@ A decentralized application for SME invoice financing on the XDC Network, enabli
 
 ## 🚀 Live Demo & Video
 
-- **Live Demo**: [Deploy to Vercel](https://vercel.com/new/clone?repository-url=https://github.com/masumo/invoiceflow)
-- **Demo Video**: [Coming Soon - YouTube Link]
-- **Presentation**: [Coming Soon - Pitch Deck]
+- **Live Demo**: [Vercel App](https://invoice-flow-jet.vercel.app/)
+- **Demo Video**: [Loom Video](https://www.loom.com/share/b13ca7f5efca40a39573ea10b5e7a001?sid=caf57e3e-7381-4258-abbc-3676226b0ec6)
+- **Presentation**: [Gamma Site](https://invoiceflow-revolutioniz-32p44ny.gamma.site/)
 
 ## ⛓️ Smart Contract on Apothem
 
 - **Contract Address**: `0x67aC9ADE0e987782E73F3fd2CB367A2bB738dE7b`
 - **Network**: XDC Apothem Testnet (Chain ID: 51)
-- **Explorer**: [View on XDC Explorer](https://explorer.apothem.network/address/0x67aC9ADE0e987782E73F3fd2CB367A2bB738dE7b)
+- **Explorer**: [View on XDC Explorer](https://testnet.xdcscan.com/address/0x67ac9ade0e987782e73f3fd2cb367a2bb738de7b)
 
 ## 🎯 The Problem We Solve
 
@@ -68,12 +68,6 @@ XDC Network is the perfect blockchain for trade finance applications:
 - **Enterprise Adoption**: Used by major trade finance institutions
 - **Interoperability**: Bridges to Ethereum and other networks
 
-### 🌍 **Global Reach**
-- **International Network**: Masternodes across 6 continents
-- **Banking Partnerships**: Integrated with traditional finance
-- **Government Support**: Backed by trade finance initiatives
-- **Developer Ecosystem**: Growing DeFi and RWA projects
-
 ## 🛠️ Tech Stack
 
 ### **Blockchain & Smart Contracts**
@@ -87,12 +81,6 @@ XDC Network is the perfect blockchain for trade finance applications:
 - **Vite**: Fast build tool and dev server
 - **Ethers.js v6**: Web3 library for blockchain interactions
 - **Tailwind CSS**: Utility-first styling framework
-
-### **Development Tools**
-- **MetaMask**: Wallet integration
-- **React Router**: Client-side routing
-- **React Hot Toast**: User notifications
-- **Heroicons**: Beautiful SVG icons
 
 ## ⚙️ Getting Started (Local Setup)
 
@@ -171,15 +159,6 @@ Add XDC Apothem Network to MetaMask:
 5. **Track Portfolio**: Monitor your investments and returns
 6. **Collect Returns**: Receive full invoice value when clients pay
 
-## 🔒 Security Features
-
-- **OpenZeppelin Libraries**: Industry-standard security patterns
-- **Reentrancy Protection**: Guards against reentrancy attacks
-- **Access Control**: Role-based permissions for contract functions
-- **Input Validation**: Comprehensive checks on all user inputs
-- **Pausable Contract**: Emergency stop functionality
-- **Event Logging**: Complete audit trail of all transactions
-
 ## 🚀 Future Roadmap
 
 ### Phase 1: Core Platform (Current)
@@ -208,7 +187,7 @@ Add XDC Apothem Network to MetaMask:
 ## 🚀 Deployment to Vercel
 
 ### Quick Deploy
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/masumo/invoiceflow)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/masumo/invoice-flow)
 
 ### Manual Deployment
 
@@ -238,42 +217,10 @@ Add XDC Apothem Network to MetaMask:
    - `VITE_CHAIN_ID`: `51`
    - `VITE_NETWORK_NAME`: `XDC Apothem Network`
 
-### Alternative Deployment Options
-
-- **Netlify**: Connect your GitHub repo and deploy automatically
-- **GitHub Pages**: Use GitHub Actions for static deployment
-- **Railway**: One-click deployment with database support
-
-## 🤝 Contributing
-
-We welcome contributions from the community! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
-
-### Development Process
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **XDC Network**: For providing the perfect blockchain infrastructure for trade finance
-- **OpenZeppelin**: For security-audited smart contract libraries
-- **Hardhat Team**: For excellent development tools
-- **React Community**: For the amazing frontend ecosystem
-
-## 📞 Contact & Support
-
-- **Website**: [Coming Soon]
-- **Email**: [Your Email]
-- **Twitter**: [@InvoiceFlow]
-- **Discord**: [Community Link]
-- **Documentation**: [Docs Link]
-
 ---
 
 **Built with ❤️ for the XDC VIBES Hackathon**

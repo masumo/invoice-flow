@@ -85,10 +85,10 @@ const InvestorMarketplace = () => {
         case 'roi':
           return calculateROI(b) - calculateROI(a)
         case 'faceValue':
-          return parseFloat(b.faceValue) - parseFloat(a.faceValue)
+          return Number(b.faceValue - a.faceValue) / 1e18
         case 'dueDate':
         default:
-          return a.dueDate - b.dueDate
+          return Number(a.dueDate - b.dueDate)
       }
     })
 
@@ -96,14 +96,15 @@ const InvestorMarketplace = () => {
   }
 
   const calculateROI = (invoice) => {
-    const faceValue = parseFloat(invoice.faceValue)
-    const salePrice = parseFloat(invoice.salePrice)
+    const faceValue = Number(invoice.faceValue) / 1e18 // Convert from wei to FLOW
+    const salePrice = Number(invoice.salePrice) / 1e18 // Convert from wei to FLOW
     return ((faceValue - salePrice) / salePrice * 100)
   }
 
   const calculateDaysToMaturity = (dueDate) => {
-    const now = Date.now() / 1000
-    const days = Math.ceil((dueDate - now) / (24 * 60 * 60))
+    const now = Math.floor(Date.now() / 1000)
+    const dueDateNumber = Number(dueDate)
+    const days = Math.ceil((dueDateNumber - now) / (24 * 60 * 60))
     return Math.max(0, days)
   }
 
@@ -113,11 +114,13 @@ const InvestorMarketplace = () => {
   }
 
   const formatDate = (timestamp) => {
-    return new Date(timestamp * 1000).toLocaleDateString()
+    const timestampNumber = Number(timestamp) // Convert BigInt to Number
+    return new Date(timestampNumber * 1000).toLocaleDateString()
   }
 
-  const formatXDC = (amount) => {
-    return `${parseFloat(amount).toFixed(2)} XDC`
+  const formatFlow = (amount) => {
+    const amountInFlow = Number(amount) / 1e18 // Convert from wei to FLOW
+    return `${amountInFlow.toFixed(2)} FLOW`
   }
 
   const getROIColor = (roi) => {
@@ -216,10 +219,11 @@ const InvestorMarketplace = () => {
               <div className="p-2 bg-yellow-100 rounded-lg">
                 <ClockIcon className="h-6 w-6 text-yellow-600" />
               </div>
+             
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Value</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {formatXDC(invoices.reduce((sum, inv) => sum + parseFloat(inv.faceValue || 0), 0))}
+                  {formatFlow(invoices.reduce((sum, inv) => BigInt(sum) + BigInt(inv.faceValue || 0), 0n))}
                 </p>
               </div>
             </div>
@@ -329,12 +333,12 @@ const InvestorMarketplace = () => {
                     {/* Key Metrics */}
                     <div className="space-y-3 mb-6">
                       <div className="flex justify-between">
-                        <span className="text-sm text-gray-600">Face Value:</span>
-                        <span className="font-semibold">{formatXDC(invoice.faceValue)}</span>
+                        <span className="text-gray-600">Face Value:</span>
+                        <span className="font-semibold">{formatFlow(invoice.faceValue)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-gray-600">Sale Price:</span>
-                        <span className="font-semibold">{formatXDC(invoice.salePrice)}</span>
+                        <span className="text-gray-600">Sale Price:</span>
+                        <span className="font-semibold">{formatFlow(invoice.salePrice)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Potential ROI:</span>

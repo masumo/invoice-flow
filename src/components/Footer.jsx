@@ -15,7 +15,7 @@ const Footer = () => {
               <span className="text-xl font-bold">InvoiceFlow</span>
             </div>
             <p className="text-gray-400 mb-4 max-w-md">
-              Revolutionizing SME invoice financing through blockchain technology on the XDC Network. 
+              Revolutionizing SME invoice financing through blockchain technology on the Flow Network. 
               Tokenize, trade, and finance invoices in a decentralized marketplace.
             </p>
             <div className="flex space-x-4">
@@ -81,12 +81,12 @@ const Footer = () => {
             <ul className="space-y-2">
               <li>
                 <a
-                  href="https://xinfin.org"
+                  href="https://flow.com"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-white transition-colors"
                 >
-                  XDC Network
+                  Flow Network
                 </a>
               </li>
               <li>
@@ -126,12 +126,12 @@ const Footer = () => {
         <div className="mt-8 pt-8 border-t border-gray-800">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400 text-sm">
-              © 2024 InvoiceFlow. Built for XDC VIBES Hackathon. Open source under MIT License.
+              © 2024 InvoiceFlow. Built for Flow Hackathon. Open source under MIT License.
             </p>
             <div className="mt-4 md:mt-0 flex items-center space-x-4">
               <span className="text-gray-400 text-sm">Powered by</span>
               <div className="flex items-center space-x-2">
-                <span className="text-xdc-400 font-semibold">XDC Network</span>
+                <span className="text-blue-400 font-semibold">Flow Network</span>
               </div>
             </div>
           </div>

@@ -1,8 +1,10 @@
 {
-  "contractAddress": "0x67aC9ADE0e987782E73F3fd2CB367A2bB738dE7b",
-  "network": "apothem",
-  "chainId": "51",
-  "deployer": "0x24E12d5Db42EefeC360e02aCc6F82C682e3C264d",
-  "deploymentTime": "2025-08-31T15:53:08.037Z",
-  "transactionHash": "0xdca3cc7a2474d04a16ed747c6a967fbff3b2d8ae505442e44fe71ad3f66c95ce"
+  "network": "flowTestnet",
+  "invoiceNFT": "0x1c8f2cE46f7E1FA213900149f92fCb90522CfEE6",
+  "mintAction": "0x9B7C02ACfC44D9Da4F34D1b42973aa4495daCBC8",
+  "purchaseAction": "0x4eA7f086d1815556B4FDBaa187Fe90710b57183D",
+  "settleAction": "0x34eb43222e02fEF11255be4B3e8d1928349BCFCE",
+  "platformWallet": "0x24E12d5Db42EefeC360e02aCc6F82C682e3C264d",
+  "platformFee": 100,
+  "timestamp": "2025-10-31T09:08:44.171Z"
 }

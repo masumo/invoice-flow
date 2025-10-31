@@ -33,8 +33,24 @@ const ClientDashboard = () => {
 
     setLoading(true)
     try {
-      // Use the optimized getInvoicesByClient function that uses event filtering
+      // Use the optimized getInvoicesByClient function that returns processed data
       const clientInvoices = await getInvoicesByClient(account)
+      console.log('Client invoices loaded:', clientInvoices)
+      
+      console.log(`Loaded ${clientInvoices.length} invoices for client`)
+      if (clientInvoices.length > 0) {
+        console.log('First invoice sample:', {
+          id: clientInvoices[0].id,
+          sme: clientInvoices[0].sme,
+          investor: clientInvoices[0].investor,
+          client: clientInvoices[0].client,
+          faceValue: clientInvoices[0].faceValue,
+          formattedValue: formatFLOW(clientInvoices[0].faceValue),
+          dueDate: clientInvoices[0].dueDate,
+          status: clientInvoices[0].status
+        })
+        console.log('Full first invoice object:', clientInvoices[0])
+      }
       setInvoices(clientInvoices)
     } catch (error) {
       console.error('Error loading client invoices:', error)
@@ -67,16 +83,56 @@ const ClientDashboard = () => {
     setShowPaymentModal(true)
   }
 
-  const formatXDC = (value) => {
-    return `${parseFloat(value).toFixed(2)} XDC`
+  const formatFLOW = (value) => {
+    if (!value) return '0.00 FLOW'
+    
+    // Handle different input types
+    let numericValue
+    if (typeof value === 'bigint') {
+      // Convert BigInt to number by dividing by 10^18 (wei to ether)
+      numericValue = Number(value) / 1e18
+    } else if (typeof value === 'string') {
+      // Parse string directly (assuming already in FLOW)
+      numericValue = parseFloat(value)
+    } else {
+      // Handle regular numbers (assuming already in FLOW)
+      numericValue = parseFloat(value)
+    }
+    
+    return `${isNaN(numericValue) ? 0 : numericValue.toFixed(2)} FLOW`
   }
 
   const formatDate = (timestamp) => {
-    return new Date(timestamp * 1000).toLocaleDateString()
+    if (!timestamp || timestamp === 0) return 'Not Set'
+    
+    try {
+      // Handle BigInt conversion
+      const timestampNumber = typeof timestamp === 'bigint' ? Number(timestamp) : Number(timestamp)
+      
+      // Validate timestamp (should be a reasonable Unix timestamp)
+      if (isNaN(timestampNumber) || timestampNumber < 0) {
+        return 'Invalid Date'
+      }
+      
+      // Create date object (multiply by 1000 to convert from seconds to milliseconds)
+      const date = new Date(timestampNumber * 1000)
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return 'Invalid Date'
+      }
+      
+      return date.toLocaleDateString()
+    } catch (error) {
+      console.error('Error formatting date:', error)
+      return 'Invalid Date'
+    }
   }
 
   const getStatusIcon = (status) => {
-    switch (status) {
+    // Handle BigInt status
+    const statusNumber = typeof status === 'bigint' ? Number(status) : status
+    switch (statusNumber) {
       case 0: // OnMarket
         return <ClockIcon className="h-4 w-4" />
       case 1: // Sold
@@ -91,7 +147,9 @@ const ClientDashboard = () => {
   }
 
   const getStatusText = (status) => {
-    switch (status) {
+    // Handle BigInt status
+    const statusNumber = typeof status === 'bigint' ? Number(status) : status
+    switch (statusNumber) {
       case 0: return 'Available'
       case 1: return 'Payment Due'
       case 2: return 'Paid'
@@ -102,7 +160,9 @@ const ClientDashboard = () => {
 
   const getStatusClass = (status) => {
     const baseClass = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium'
-    switch (status) {
+    // Handle BigInt status
+    const statusNumber = typeof status === 'bigint' ? Number(status) : status
+    switch (statusNumber) {
       case 0: return `${baseClass} bg-blue-100 text-blue-800`
       case 1: return `${baseClass} bg-yellow-100 text-yellow-800`
       case 2: return `${baseClass} bg-green-100 text-green-800`
@@ -112,11 +172,15 @@ const ClientDashboard = () => {
   }
 
   const isPaymentDue = (invoice) => {
-    return invoice.status === 1 && new Date(invoice.dueDate * 1000) >= new Date()
+    const statusNumber = typeof invoice.status === 'bigint' ? Number(invoice.status) : invoice.status
+    const dueDateNumber = typeof invoice.dueDate === 'bigint' ? Number(invoice.dueDate) : invoice.dueDate
+    return statusNumber === 1 && new Date(dueDateNumber * 1000) >= new Date()
   }
 
   const isOverdue = (invoice) => {
-    return invoice.status === 1 && new Date(invoice.dueDate * 1000) < new Date()
+    const statusNumber = typeof invoice.status === 'bigint' ? Number(invoice.status) : invoice.status
+    const dueDateNumber = typeof invoice.dueDate === 'bigint' ? Number(invoice.dueDate) : invoice.dueDate
+    return statusNumber === 1 && new Date(dueDateNumber * 1000) < new Date()
   }
 
   if (!account) {
@@ -243,8 +307,8 @@ const ClientDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {invoices.map((invoice) => (
-                    <tr key={invoice.id} className="hover:bg-gray-50">
+                  {invoices.map((invoice, index) => (
+                    <tr key={`invoice-${invoice.id}-${index}`} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         #{invoice.id}
                       </td>
@@ -252,7 +316,7 @@ const ClientDashboard = () => {
                         {invoice.sme?.slice(0, 6)}...{invoice.sme?.slice(-4)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatXDC(invoice.faceValue)}
+                        {formatFLOW(invoice.faceValue)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatDate(invoice.dueDate)}
@@ -315,7 +379,7 @@ const ClientDashboard = () => {
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm text-gray-600">Amount Due:</span>
-                    <span className="font-semibold text-gray-900">{formatXDC(selectedInvoice.faceValue)}</span>
+                    <span className="font-semibold text-gray-900">{formatFLOW(selectedInvoice.faceValue)}</span>
                   </div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm text-gray-600">Due Date:</span>

@@ -17,7 +17,7 @@ const TransactionLink = ({ txHash, className = '', showIcon = true, showFullHash
       target="_blank"
       rel="noopener noreferrer"
       className={`inline-flex items-center text-primary-600 hover:text-primary-800 transition-colors duration-200 ${className}`}
-      title={`View transaction on XDCScan: ${txHash}`}
+      title={`View transaction on Flow Explorer: ${txHash}`}
     >
       <span className="font-mono text-sm">{displayHash}</span>
       {showIcon && (

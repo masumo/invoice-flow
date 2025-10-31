@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { ethers } from 'ethers'
 import { useWeb3 } from '../contexts/Web3Context'
 import { toast } from 'react-hot-toast'
 import InvoiceThumbnail from '../components/InvoiceThumbnail'
@@ -29,18 +30,39 @@ const InvestorPortfolio = () => {
   }, [account, contract])
 
   const loadPortfolio = async () => {
+    if (!account || !getInvoicesByOwner || !getInvoice) return
+    
+    setLoading(true)
     try {
-      setLoading(true)
       const tokenIds = await getInvoicesByOwner(account)
+      console.log('🔍 DEBUG: Token IDs found:', tokenIds)
       
-      // Fetch full invoice data for each token ID
       const invoicePromises = tokenIds.map(async (tokenId) => {
-        return await getInvoice(tokenId)
+        try {
+          const invoice = await getInvoice(tokenId)
+          console.log(`🔍 DEBUG: Invoice ${tokenId} data:`, {
+            id: tokenId,
+            status: invoice.status,
+            faceValue: invoice.faceValue?.toString(),
+            salePrice: invoice.salePrice?.toString(),
+            dueDate: invoice.dueDate,
+            createdAt: invoice.createdAt
+          })
+          return invoice
+        } catch (error) {
+          console.error(`Error fetching invoice ${tokenId}:`, error)
+          return null
+        }
       })
       
       const allInvoices = await Promise.all(invoicePromises)
       // Filter out null results and only show invoices that were purchased (status 1, 2, or 3)
       const purchasedInvoices = allInvoices.filter(invoice => invoice && invoice.status !== 0)
+      console.log('🔍 DEBUG: Purchased invoices:', purchasedInvoices.map(inv => ({
+        id: inv.id,
+        status: inv.status,
+        statusName: inv.status === 1 ? 'Active' : inv.status === 2 ? 'Repaid' : inv.status === 3 ? 'Defaulted' : 'Unknown'
+      })))
       setInvoices(purchasedInvoices)
     } catch (error) {
       console.error('Error loading portfolio:', error)
@@ -53,42 +75,56 @@ const InvestorPortfolio = () => {
   const getFilteredInvoices = () => {
     switch (filter) {
       case 'active':
-        return invoices.filter(inv => inv.status === 1) // Sold (waiting for repayment)
+        return invoices.filter(inv => Number(inv.status) === 1) // Sold (waiting for repayment)
       case 'repaid':
-        return invoices.filter(inv => inv.status === 2) // Repaid
+        return invoices.filter(inv => Number(inv.status) === 2) // Repaid
       case 'defaulted':
-        return invoices.filter(inv => inv.status === 3) // Defaulted
+        return invoices.filter(inv => Number(inv.status) === 3) // Defaulted
       default:
         return invoices
     }
   }
 
   const calculatePortfolioStats = () => {
+    console.log('🔍 DEBUG: Calculating stats for invoices:', invoices.length)
+    console.log('🔍 DEBUG: Invoice statuses:', invoices.map(inv => ({ id: inv.id, status: inv.status })))
+    
     const totalInvested = invoices.reduce((sum, inv) => {
-      const salePrice = parseFloat(inv.salePrice || 0)
+      const salePrice = toEther(inv.salePrice)
       return sum + (isNaN(salePrice) ? 0 : salePrice)
     }, 0)
     
     const totalFaceValue = invoices.reduce((sum, inv) => {
-      const faceValue = parseFloat(inv.faceValue || 0)
+      const faceValue = toEther(inv.faceValue)
       return sum + (isNaN(faceValue) ? 0 : faceValue)
     }, 0)
     
-    const repaidInvoices = invoices.filter(inv => inv.status === 2)
+    const repaidInvoices = invoices.filter(inv => Number(inv.status) === 2)
+    console.log('🔍 DEBUG: Repaid invoices found:', repaidInvoices.length, repaidInvoices.map(inv => ({ id: inv.id, status: inv.status })))
+    
     const totalReturns = repaidInvoices.reduce((sum, inv) => {
-      const faceValue = parseFloat(inv.faceValue || 0)
+      const faceValue = toEther(inv.faceValue)
       return sum + (isNaN(faceValue) ? 0 : faceValue)
     }, 0)
     
     const totalProfit = totalReturns - repaidInvoices.reduce((sum, inv) => {
-      const salePrice = parseFloat(inv.salePrice || 0)
+      const salePrice = toEther(inv.salePrice)
       return sum + (isNaN(salePrice) ? 0 : salePrice)
     }, 0)
     
-    const activeInvoices = invoices.filter(inv => inv.status === 1)
-    const defaultedInvoices = invoices.filter(inv => inv.status === 3)
+    const activeInvoices = invoices.filter(inv => Number(inv.status) === 1)
+    const defaultedInvoices = invoices.filter(inv => Number(inv.status) === 3)
     
-    return {
+    console.log('🔍 DEBUG: Portfolio calculations:', {
+      totalInvested,
+      totalReturns,
+      totalProfit,
+      activeCount: activeInvoices.length,
+      repaidCount: repaidInvoices.length,
+      defaultedCount: defaultedInvoices.length
+    })
+    
+    const stats = {
       totalInvested,
       totalFaceValue,
       totalReturns,
@@ -99,11 +135,13 @@ const InvestorPortfolio = () => {
       totalCount: invoices.length,
       roi: totalInvested > 0 ? (totalProfit / totalInvested * 100) : 0
     }
+    
+    return stats
   }
 
   const calculateROI = (invoice) => {
-    const faceValue = parseFloat(invoice.faceValue || 0)
-    const salePrice = parseFloat(invoice.salePrice || 0)
+    const faceValue = toEther(invoice.faceValue)
+    const salePrice = toEther(invoice.salePrice)
     
     if (isNaN(faceValue) || isNaN(salePrice) || salePrice === 0) {
       return 0
@@ -114,17 +152,30 @@ const InvestorPortfolio = () => {
 
   const calculateDaysToMaturity = (dueDate) => {
     const now = Date.now() / 1000
-    const days = Math.ceil((dueDate - now) / (24 * 60 * 60))
+    // Convert BigInt to number if necessary
+    const dueDateNumber = typeof dueDate === 'bigint' ? Number(dueDate) : dueDate
+    const days = Math.ceil((dueDateNumber - now) / (24 * 60 * 60))
     return Math.max(0, days)
   }
 
   const formatDate = (timestamp) => {
-    return new Date(timestamp * 1000).toLocaleDateString()
+    // Convert BigInt to number if necessary
+    const timestampNumber = typeof timestamp === 'bigint' ? Number(timestamp) : timestamp
+    return new Date(timestampNumber * 1000).toLocaleDateString()
   }
 
-  const formatXDC = (amount) => {
+  // Helper function to convert BigNumber/BigInt to ether consistently
+  const toEther = (value) => {
+    if (typeof value === 'bigint' || (typeof value === 'object' && value !== null)) {
+      return parseFloat(ethers.formatEther(value))
+    }
+    return parseFloat(value || 0)
+  }
+
+  const formatFLOW = (amount) => {
+    // Amount should be in ether format
     const value = parseFloat(amount || 0)
-    return `${isNaN(value) ? 0 : value.toFixed(2)} XDC`
+    return `${isNaN(value) ? 0 : value.toFixed(2)} FLOW`
   }
 
   const getStatusInfo = (status) => {
@@ -200,7 +251,7 @@ const InvestorPortfolio = () => {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Invested</p>
-                  <p className="text-2xl font-bold text-gray-900">{formatXDC(stats.totalInvested)}</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatFLOW(stats.totalInvested)}</p>
                 </div>
               </div>
             </div>
@@ -214,7 +265,7 @@ const InvestorPortfolio = () => {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Returns</p>
-                  <p className="text-2xl font-bold text-gray-900">{formatXDC(stats.totalReturns)}</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatFLOW(stats.totalReturns)}</p>
                 </div>
               </div>
             </div>
@@ -231,7 +282,7 @@ const InvestorPortfolio = () => {
                   <p className={`text-2xl font-bold ${
                     stats.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'
                   }`}>
-                    {stats.totalProfit >= 0 ? '+' : ''}{formatXDC(stats.totalProfit)}
+                    {stats.totalProfit >= 0 ? '+' : ''}{formatFLOW(stats.totalProfit)}
                   </p>
                 </div>
               </div>
@@ -405,11 +456,11 @@ const InvestorPortfolio = () => {
                     <div className="space-y-3 mb-6">
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Invested:</span>
-                        <span className="font-semibold">{formatXDC(invoice.salePrice)}</span>
+                        <span className="font-semibold">{formatFLOW(toEther(invoice.salePrice))}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Face Value:</span>
-                        <span className="font-semibold">{formatXDC(invoice.faceValue)}</span>
+                        <span className="font-semibold">{formatFLOW(toEther(invoice.faceValue))}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Potential Profit:</span>
@@ -417,7 +468,7 @@ const InvestorPortfolio = () => {
                           invoice.status === 2 ? 'text-green-600' : 
                           invoice.status === 3 ? 'text-red-600' : 'text-gray-900'
                         }`}>
-                          {invoice.status === 3 ? '-' : '+'}{formatXDC(profit)}
+                          {invoice.status === 3 ? '-' : '+'}{formatFLOW(toEther(invoice.faceValue) - toEther(invoice.salePrice))}
                         </span>
                       </div>
                       <div className="flex justify-between">

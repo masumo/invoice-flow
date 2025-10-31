@@ -1,55 +1,50 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { ethers } from 'ethers'
 import toast from 'react-hot-toast'
-import { getTransactionUrl, getAddressUrl, formatTxHash, getNetworkName } from '../utils/blockchain'
+import { getTransactionUrl, getAddressUrl, formatTxHash, getNetworkName, isFlowNetwork } from '../utils/blockchain'
 
-// Contract ABI - This would typically be imported from a generated file
-const CONTRACT_ABI = [
-  "function tokenizeInvoice(address client, uint256 faceValue, uint256 salePrice, uint256 dueDate, string memory invoiceURI) external returns (uint256)",
-  "function buyInvoice(uint256 tokenId) external payable",
-  "function repayInvoice(uint256 tokenId) external payable",
-  "function markAsDefaulted(uint256 tokenId) external",
-  "function getInvoicesByStatus(uint8 status) external view returns (uint256[])",
-  "function getInvoicesByOwner(address owner) external view returns (uint256[])",
-    "function getInvoicesByClient(address client) external view returns (uint256[])",
-  "function getInvoicesBySME(address sme) external view returns (uint256[])",
-  "function getInvoice(uint256 tokenId) external view returns (tuple(uint256 id, address sme, address investor, address client, uint256 faceValue, uint256 salePrice, uint256 dueDate, string invoiceURI, uint8 status, uint256 createdAt))",
-  "function getTotalInvoices() external view returns (uint256)",
-  "function calculateProfit(uint256 tokenId) external view returns (uint256)",
-  "function ownerOf(uint256 tokenId) external view returns (address)",
-  "function name() external view returns (string)",
-  "function symbol() external view returns (string)",
-  "function tokenURI(uint256 tokenId) external view returns (string)",
-  "event InvoiceTokenized(uint256 indexed tokenId, address indexed sme, address indexed client, uint256 faceValue, uint256 salePrice, uint256 dueDate, string invoiceURI)",
-  "event InvoiceSold(uint256 indexed tokenId, address indexed sme, address indexed investor, uint256 salePrice)",
-  "event InvoiceRepaid(uint256 indexed tokenId, address indexed investor, address indexed client, uint256 faceValue)"
-]
+// Contract ABI - Import from generated file after compilation
+import InvoiceNFTABI from '../artifacts/contracts/InvoiceNFT.sol/InvoiceNFT.json'
+import MintInvoiceActionABI from '../artifacts/contracts/MintInvoiceAction.sol/MintInvoiceAction.json'
+import PurchaseInvoiceActionABI from '../artifacts/contracts/PurchaseInvoiceAction.sol/PurchaseInvoiceAction.json'
+import SettleInvoiceActionABI from '../artifacts/contracts/SettleInvoiceAction.sol/SettleInvoiceAction.json'
 
+// Create Web3 context
 const Web3Context = createContext()
 
-export const useWeb3 = () => {
-  const context = useContext(Web3Context)
-  if (!context) {
-    throw new Error('useWeb3 must be used within a Web3Provider')
-  }
-  return context
-}
+// Environment variables
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS
+const MINT_ACTION_ADDRESS = import.meta.env.VITE_MINT_ACTION_ADDRESS
+const PURCHASE_ACTION_ADDRESS = import.meta.env.VITE_PURCHASE_ACTION_ADDRESS
+const SETTLE_ACTION_ADDRESS = import.meta.env.VITE_SETTLE_ACTION_ADDRESS
+const TARGET_CHAIN_ID = parseInt(import.meta.env.VITE_CHAIN_ID || '545')
+const TARGET_NETWORK_NAME = import.meta.env.VITE_NETWORK_NAME || 'Flow EVM Testnet'
 
-export const Web3Provider = ({ children }) => {
-  const [account, setAccount] = useState(null)
+// Log environment variables during initialization
+console.log('Environment Variables:', {
+  CONTRACT_ADDRESS,
+  MINT_ACTION_ADDRESS,
+  PURCHASE_ACTION_ADDRESS,
+  SETTLE_ACTION_ADDRESS,
+  TARGET_CHAIN_ID,
+  TARGET_NETWORK_NAME,
+  RPC_URL: import.meta.env.VITE_RPC_URL
+})
+
+export function Web3Provider({ children }) {
+  // State management
   const [provider, setProvider] = useState(null)
   const [signer, setSigner] = useState(null)
-  const [contract, setContract] = useState(null)
+  const [account, setAccount] = useState(null)
   const [chainId, setChainId] = useState(null)
-  const [isConnecting, setIsConnecting] = useState(false)
   const [isCorrectNetwork, setIsCorrectNetwork] = useState(false)
+  const [isConnecting, setIsConnecting] = useState(false)
+  const [contract, setContract] = useState(null)
+  const [mintAction, setMintAction] = useState(null)
+  const [purchaseAction, setPurchaseAction] = useState(null)
+  const [settleAction, setSettleAction] = useState(null)
   const [transactionHistory, setTransactionHistory] = useState([])
-  const toastShownRef = useRef(new Set())
-
-  const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS
-  const TARGET_CHAIN_ID = parseInt(import.meta.env.VITE_CHAIN_ID || '51')
-  const TARGET_NETWORK_NAME = import.meta.env.VITE_NETWORK_NAME || 'XDC Apothem Network'
-
+  
   // Check if MetaMask is installed
   const isMetaMaskInstalled = () => {
     return typeof window !== 'undefined' && typeof window.ethereum !== 'undefined'
@@ -96,6 +91,13 @@ export const Web3Provider = ({ children }) => {
       const web3Signer = await web3Provider.getSigner()
       const network = await web3Provider.getNetwork()
 
+      console.log('Wallet connection successful:', {
+        account: accounts[0],
+        chainId: Number(network.chainId),
+        targetChainId: TARGET_CHAIN_ID,
+        signerAddress: web3Signer.address
+      })
+
       setProvider(web3Provider)
       setSigner(web3Signer)
       setAccount(accounts[0])
@@ -105,29 +107,68 @@ export const Web3Provider = ({ children }) => {
       const correctNetwork = Number(network.chainId) === TARGET_CHAIN_ID
       setIsCorrectNetwork(correctNetwork)
 
-      console.log('Checking network - chainId:', Number(network.chainId), 'target:', TARGET_CHAIN_ID, 'contract address:', CONTRACT_ADDRESS)
-      
       if (!correctNetwork) {
         toast.error(`Please switch to ${TARGET_NETWORK_NAME}`)
+        return
       }
 
-      // Initialize contract if we have the address and are on correct network
-      if (CONTRACT_ADDRESS && correctNetwork) {
-        const contractInstance = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, web3Signer)
-        setContract(contractInstance)
-        console.log('Contract initialized successfully:', !!contractInstance)
-      } else {
-        console.log('Contract not initialized - wrong network or missing address')
-      }
+      // Initialize contracts if we have addresses and are on correct network
+      try {
+        console.log('Initializing contracts after wallet connection:', {
+          CONTRACT_ADDRESS,
+          MINT_ACTION_ADDRESS,
+          PURCHASE_ACTION_ADDRESS,
+          SETTLE_ACTION_ADDRESS,
+          signerAddress: web3Signer.address
+        })
 
-      toast.success('Wallet connected successfully!')
+        if (CONTRACT_ADDRESS) {
+          const contractInstance = new ethers.Contract(CONTRACT_ADDRESS, InvoiceNFTABI.abi, web3Signer)
+          console.log('InvoiceNFT contract initialized:', {
+            address: contractInstance.target || contractInstance.address,
+            hasInterface: await contractInstance.supportsInterface('0x80ac58cd') // ERC721 interface ID
+          })
+          setContract(contractInstance)
+        } else {
+          console.error('CONTRACT_ADDRESS is not set')
+        }
+        
+        if (MINT_ACTION_ADDRESS) {
+          const mintActionInstance = new ethers.Contract(MINT_ACTION_ADDRESS, MintInvoiceActionABI.abi, web3Signer)
+          console.log('MintAction contract initialized:', mintActionInstance.target || mintActionInstance.address)
+          setMintAction(mintActionInstance)
+        } else {
+          console.error('MINT_ACTION_ADDRESS is not set')
+        }
+        
+        if (PURCHASE_ACTION_ADDRESS) {
+          const purchaseActionInstance = new ethers.Contract(PURCHASE_ACTION_ADDRESS, PurchaseInvoiceActionABI.abi, web3Signer)
+          console.log('PurchaseAction contract initialized:', purchaseActionInstance.target || purchaseActionInstance.address)
+          setPurchaseAction(purchaseActionInstance)
+        } else {
+          console.error('PURCHASE_ACTION_ADDRESS is not set')
+        }
+        
+        if (SETTLE_ACTION_ADDRESS) {
+          const settleActionInstance = new ethers.Contract(SETTLE_ACTION_ADDRESS, SettleInvoiceActionABI.abi, web3Signer)
+          console.log('SettleAction contract initialized:', settleActionInstance.target || settleActionInstance.address)
+          setSettleAction(settleActionInstance)
+        } else {
+          console.error('SETTLE_ACTION_ADDRESS is not set')
+        }
+
+        toast.success('Wallet connected successfully!')
+      } catch (error) {
+        console.error('Error initializing contracts:', error)
+        toast.error('Failed to initialize contracts')
+      }
     } catch (error) {
       console.error('Error connecting wallet:', error)
       toast.error('Failed to connect wallet')
     } finally {
       setIsConnecting(false)
     }
-  }, [CONTRACT_ADDRESS, TARGET_CHAIN_ID, TARGET_NETWORK_NAME])
+  }, [])
 
   // Disconnect wallet
   const disconnectWallet = useCallback(() => {
@@ -135,6 +176,9 @@ export const Web3Provider = ({ children }) => {
     setProvider(null)
     setSigner(null)
     setContract(null)
+    setMintAction(null)
+    setPurchaseAction(null)
+    setSettleAction(null)
     setChainId(null)
     setIsCorrectNetwork(false)
     toast.success('Wallet disconnected')
@@ -159,14 +203,14 @@ export const Web3Provider = ({ children }) => {
               chainId: `0x${TARGET_CHAIN_ID.toString(16)}`,
               chainName: TARGET_NETWORK_NAME,
               nativeCurrency: {
-                name: 'XDC',
-                symbol: 'XDC',
+                name: 'FLOW',
+                symbol: 'FLOW',
                 decimals: 18
               },
-              rpcUrls: [import.meta.env.VITE_RPC_URL || 'https://rpc.apothem.network'],
-              blockExplorerUrls: TARGET_CHAIN_ID === 51 
-                ? ['https://explorer.apothem.network']
-                : ['https://explorer.xinfin.network']
+              rpcUrls: [import.meta.env.VITE_RPC_URL || 'https://testnet.evm.nodes.onflow.org'],
+              blockExplorerUrls: [TARGET_CHAIN_ID === 545 
+                ? 'https://evm-testnet.flowscan.io'
+        : 'https://flowscan.org']
             }]
           })
         } catch (addError) {
@@ -181,396 +225,563 @@ export const Web3Provider = ({ children }) => {
   }, [TARGET_CHAIN_ID, TARGET_NETWORK_NAME])
 
   // Contract interaction functions
-  const tokenizeInvoice = useCallback(async (invoiceData) => {
-    if (!contract || !signer) {
-      throw new Error('Contract not initialized')
+  const tokenizeInvoice = useCallback(async ({ client, faceValue, salePrice, dueDate, invoiceURI }) => {
+    if (!mintAction || !signer || !contract) {
+      console.error('Contract state:', {
+        mintAction: !!mintAction,
+        signer: !!signer,
+        contract: !!contract,
+        mintActionAddress: MINT_ACTION_ADDRESS,
+        contractAddress: CONTRACT_ADDRESS
+      })
+      throw new Error('Contracts not initialized')
     }
-
+  
     try {
-      // Validasi network dan contract address
-      const network = await provider.getNetwork()
-      console.log('Current network:', network)
+      console.log('Tokenizing invoice with params:', { client, faceValue, salePrice, dueDate, invoiceURI })
       
-      const contractCode = await provider.getCode(contract.target)
-      if (contractCode === '0x') {
-        throw new Error('Contract not deployed on this network')
-      }
-
-      // Validasi parameter sebelum memanggil contract
-      const params = [
-        invoiceData.client,
-        ethers.parseEther(invoiceData.faceValue.toString()),
-        ethers.parseEther(invoiceData.salePrice.toString()),
-        invoiceData.dueDate,
-        invoiceData.invoiceURI
-      ]
+      const parsedFaceValue = ethers.parseEther(faceValue.toString())
+      const parsedSalePrice = ethers.parseEther(salePrice.toString())
       
-      console.log('Contract call parameters:')
-      params.forEach((param, index) => {
-        console.log(`Param ${index}:`, param)
+      console.log('Parsed values:', {
+        parsedFaceValue: parsedFaceValue.toString(),
+        parsedSalePrice: parsedSalePrice.toString()
       })
-
-      // Test dengan staticCall dulu sebelum estimateGas
-      try {
-        const result = await contract.tokenizeInvoice.staticCall(...params)
-        console.log('Static call successful:', result)
-      } catch (staticError) {
-        console.log('Static call failed:', staticError)
-        throw new Error(`Contract validation failed: ${staticError.reason || staticError.message}`)
-      }
-
-      // Estimasi gas dengan fallback
-      let gasLimit
-      try {
-        const gasEstimate = await contract.tokenizeInvoice.estimateGas(...params)
-        gasLimit = gasEstimate * 120n / 100n // 20% buffer
-        console.log('Gas estimate successful:', gasEstimate.toString())
-      } catch (gasError) {
-        console.log('Gas estimation failed, using fallback:', gasError)
-        gasLimit = 500000n // Fallback gas limit yang aman
-      }
-
-      // Eksekusi transaksi dengan gas limit
-      const tx = await contract.tokenizeInvoice(...params, {
-        gasLimit: gasLimit
-      })
-
-      const receipt = await tx.wait()
       
-      // Extract token ID from events
-      const event = receipt.logs.find(log => {
-        try {
-          const parsed = contract.interface.parseLog(log)
-          return parsed.name === 'InvoiceTokenized'
-        } catch {
-          return false
-        }
-      })
-
-      const tokenId = event ? contract.interface.parseLog(event).args.tokenId : null
-      
-      // Add to transaction history
-      addTransactionToHistory(
-        receipt.hash,
-        'tokenize',
-        `Invoice tokenized for ${formatTxHash(invoiceData.client)}`,
-        tokenId ? tokenId.toString() : null
+      const tx = await mintAction.execute(
+        account,
+        client,
+        parsedFaceValue,
+        parsedSalePrice,
+        dueDate,
+        invoiceURI || `ipfs://invoice-${Date.now()}`
       )
       
-      const toastKey = `tokenize-${receipt.hash}`
-      if (!toastShownRef.current.has(toastKey)) {
-        toastShownRef.current.add(toastKey)
-        setTimeout(() => {
-          toast.success('Invoice tokenized successfully!', { id: 'tokenize-success' })
-        }, 100)
-      }
-      return { receipt, tokenId }
-    } catch (error) {
-      console.log('Full error:', error)
-      console.log('Error code:', error.code)
-      console.log('Error reason:', error.reason)
-      
-      if (error.code === 'CALL_EXCEPTION') {
-        console.log('Contract call failed - check parameters and contract state')
-        throw new Error(`Contract call failed: ${error.reason || 'Invalid parameters or contract state'}`)
-      } else if (error.code === 'INSUFFICIENT_FUNDS') {
-        throw new Error('Insufficient funds for gas fees')
-      } else if (error.code === 'NETWORK_ERROR') {
-        throw new Error('Network connection error')
-      }
-      
-      console.error('Error tokenizing invoice:', error)
-      throw error
-    }
-  }, [contract, signer, provider, addTransactionToHistory])
-
-  const buyInvoice = useCallback(async (tokenId, salePriceWei) => {
-    if (!contract || !signer) {
-      throw new Error('Contract not initialized')
-    }
-
-    try {
-      const tx = await contract.buyInvoice(tokenId, {
-        value: salePriceWei // Use wei value directly
+      console.log('Transaction hash:', tx.hash)
+      const receipt = await tx.wait()
+      console.log('Transaction receipt:', receipt)
+  
+      // Log all events from the transaction
+      console.log('Transaction receipt:', {
+        to: receipt.to,
+        from: receipt.from,
+        status: receipt.status,
+        logs: receipt.logs.map(log => ({
+          address: log.address,
+          topics: log.topics,
+          data: log.data
+        }))
       })
 
-      const receipt = await tx.wait()
+      // Try to find InvoiceMinted event
+      let tokenId
+      for (const log of receipt.logs) {
+        try {
+          // Check if log is from our contract
+          if (log.address.toLowerCase() === MINT_ACTION_ADDRESS.toLowerCase()) {
+            const parsed = mintAction.interface.parseLog(log)
+            console.log('Parsed log:', parsed)
+            
+            if (parsed.name === 'InvoiceMinted') {
+              tokenId = parsed.args.tokenId
+              console.log('Found InvoiceMinted event with tokenId:', tokenId.toString())
+              break
+            }
+          }
+        } catch (e) {
+          console.log('Failed to parse log:', e)
+          continue
+        }
+      }
+
+      if (!tokenId) {
+        console.error('All transaction logs:', receipt.logs)
+        throw new Error('InvoiceMinted event not found in transaction receipt')
+      }
       
-      // Add to transaction history
       addTransactionToHistory(
-        receipt.hash,
-        'buy',
-        `Invoice #${tokenId} purchased`,
+        tx.hash,
+        'MINT',
+        `Created invoice #${tokenId}`,
         tokenId
       )
       
-      const toastKey = `purchase-${receipt.hash}`
-      if (!toastShownRef.current.has(toastKey)) {
-        toastShownRef.current.add(toastKey)
-        setTimeout(() => {
-          toast.success('Invoice purchased successfully!', { id: 'purchase-success' })
-        }, 100)
+      return receipt
+    } catch (error) {
+      console.error('Error in tokenizeInvoice:', error)
+      throw error
+    }
+  }, [mintAction, signer, account, addTransactionToHistory])
+
+  const buyInvoice = useCallback(async (tokenId) => {
+    console.log('buyInvoice called with tokenId:', tokenId)
+    console.log('Contract state:', {
+      contract: !!contract,
+      purchaseAction: !!purchaseAction,
+      signer: !!signer,
+      purchaseActionAddress: purchaseAction?.target || purchaseAction?.address,
+      PURCHASE_ACTION_ADDRESS
+    })
+
+    if (!contract || !purchaseAction || !signer) {
+      console.error('Contract initialization check:', {
+        contract: !!contract,
+        purchaseAction: !!purchaseAction,
+        signer: !!signer,
+        purchaseActionAddress: purchaseAction?.target || purchaseAction?.address,
+        signerAddress: signer?.address,
+        contractAddress: contract?.target || contract?.address,
+        PURCHASE_ACTION_ADDRESS,
+        CONTRACT_ADDRESS
+      })
+      throw new Error('Contract not initialized')
+    }
+
+    // In ethers v6, use .target to get contract address
+    const purchaseActionAddress = purchaseAction.target || purchaseAction.address
+    if (!purchaseActionAddress) {
+      console.error('PurchaseAction address check:', {
+        purchaseAction: purchaseAction,
+        address: purchaseAction.address,
+        target: purchaseAction.target,
+        PURCHASE_ACTION_ADDRESS
+      })
+      throw new Error('PurchaseAction address is not set')
+    }
+
+    try {
+      console.log('Getting invoice details for tokenId:', tokenId)
+      const invoice = await contract.getInvoice(tokenId)
+      console.log('Invoice details:', {
+        tokenId: tokenId,
+        sme: invoice.sme,
+        client: invoice.client,
+        faceValue: invoice.faceValue.toString(),
+        salePrice: invoice.salePrice.toString(),
+        dueDate: invoice.dueDate.toString(),
+        status: invoice.status,
+        currentOwner: invoice.currentOwner
+      })
+      
+      // Check current user
+      const currentUser = await signer.getAddress()
+      console.log('Current user address:', currentUser)
+      console.log('Invoice SME address:', invoice.sme)
+      
+      // Validate purchase conditions
+       if (currentUser.toLowerCase() === invoice.sme.toLowerCase()) {
+         throw new Error('SME cannot buy their own invoice')
+       }
+       
+       // Debug status information
+       console.log('Invoice status debug:', {
+         status: invoice.status,
+         statusType: typeof invoice.status,
+         statusNumber: Number(invoice.status),
+         isZero: invoice.status === 0,
+         isStringZero: invoice.status === '0',
+         isNumberZero: Number(invoice.status) === 0
+       })
+       
+       if (Number(invoice.status) !== 0) { // 0 = OnMarket, 1 = Sold, 2 = Repaid, 3 = Defaulted
+         const statusNames = ['OnMarket', 'Sold', 'Repaid', 'Defaulted']
+         throw new Error(`Invoice not for sale. Current status: ${statusNames[Number(invoice.status)] || invoice.status}`)
+       }
+      
+      // Note: Approval check removed - contract now handles transfers internally
+      console.log('Proceeding with purchase - no approval required')
+      
+      // Check user balance
+      const userBalance = await signer.provider.getBalance(currentUser)
+      console.log('User balance check:', {
+        userBalance: userBalance.toString(),
+        requiredAmount: invoice.salePrice.toString(),
+        hasEnoughBalance: userBalance >= invoice.salePrice
+      })
+      
+      if (userBalance < invoice.salePrice) {
+        throw new Error('Insufficient balance to purchase invoice')
       }
+      
+      // Investor hanya perlu mengirim FLOW untuk membeli invoice
+      console.log('Executing purchase with value:', invoice.salePrice.toString())
+      const tx = await purchaseAction.execute(tokenId, { value: invoice.salePrice })
+      console.log('Purchase transaction:', tx)
+      
+      const receipt = await tx.wait()
+      console.log('Purchase receipt:', receipt)
+      
+      addTransactionToHistory(
+        tx.hash,
+        'PURCHASE',
+        `Purchased invoice #${tokenId}`,
+        tokenId
+      )
+      
       return receipt
     } catch (error) {
       console.error('Error buying invoice:', error)
       throw error
     }
-  }, [contract, signer, addTransactionToHistory])
+  }, [purchaseAction, contract, signer, addTransactionToHistory])
 
-  const repayInvoice = useCallback(async (tokenId, faceValue) => {
-    if (!contract || !signer) {
+  const repayInvoice = useCallback(async (tokenId) => {
+    if (!settleAction || !signer) {
       throw new Error('Contract not initialized')
     }
 
     try {
-      // Debug: Log current wallet address
-      const currentAddress = await signer.getAddress()
-      console.log('Current wallet address:', currentAddress)
-      console.log('Attempting to repay invoice:', tokenId)
-      console.log('Face value:', faceValue)
-      
-      const tx = await contract.repayInvoice(tokenId, {
-        value: ethers.parseEther(faceValue.toString())
-      })
-
+      const invoice = await contract.getInvoice(tokenId)
+      const tx = await settleAction.execute(tokenId, true, { value: invoice.faceValue })
       const receipt = await tx.wait()
       
-      // Add to transaction history
       addTransactionToHistory(
-        receipt.hash,
-        'repay',
-        `Invoice #${tokenId} repaid`,
+        tx.hash,
+        'REPAY',
+        `Repaid invoice #${tokenId}`,
         tokenId
       )
       
-      const toastKey = `repay-${receipt.hash}`
-      if (!toastShownRef.current.has(toastKey)) {
-        toastShownRef.current.add(toastKey)
-        setTimeout(() => {
-          toast.success('Invoice repaid successfully!', { id: 'repay-success' })
-        }, 100)
-      }
       return receipt
     } catch (error) {
       console.error('Error repaying invoice:', error)
       throw error
     }
-  }, [contract, signer, addTransactionToHistory])
+  }, [settleAction, contract, signer, addTransactionToHistory])
+
+  const markAsDefaulted = useCallback(async (tokenId) => {
+    if (!settleAction || !signer) {
+      throw new Error('Contract not initialized')
+    }
+
+    try {
+      const tx = await settleAction.execute(tokenId, false)
+      const receipt = await tx.wait()
+      
+      addTransactionToHistory(
+        tx.hash,
+        'DEFAULT',
+        `Marked invoice #${tokenId} as defaulted`,
+        tokenId
+      )
+      
+      return receipt
+    } catch (error) {
+      console.error('Error marking invoice as defaulted:', error)
+      throw error
+    }
+  }, [settleAction, signer, addTransactionToHistory])
+
+  // View functions
+  const getInvoice = useCallback(async (tokenId) => {
+    if (!contract) return null
+    try {
+      return await contract.getInvoice(tokenId)
+    } catch (error) {
+      console.error('Error getting invoice:', error)
+      return null
+    }
+  }, [contract])
 
   const getInvoicesByStatus = useCallback(async (status) => {
     if (!contract) return []
-
     try {
-      const tokenIds = await contract.getInvoicesByStatus(status)
-      return tokenIds.map(id => Number(id))
+      return await contract.getInvoicesByStatus(status)
     } catch (error) {
-      console.error('Error fetching invoices by status:', error)
+      console.error('Error getting invoices by status:', error)
       return []
     }
   }, [contract])
 
   const getInvoicesByOwner = useCallback(async (owner) => {
     if (!contract) return []
-
     try {
-      const tokenIds = await contract.getInvoicesByOwner(owner)
-      return tokenIds.map(id => Number(id))
+      return await contract.getInvoicesByOwner(owner)
     } catch (error) {
-      console.error('Error fetching invoices by owner:', error)
+      console.error('Error getting invoices by owner:', error)
       return []
     }
   }, [contract])
 
-  const getInvoice = useCallback(async (tokenId) => {
-    console.log('getInvoice called with tokenId:', tokenId, 'contract:', !!contract)
+  const getInvoicesByClient = useCallback(async (client) => {
     if (!contract) {
-      console.log('No contract available')
-      return null
+      console.error('Contract not initialized for getInvoicesByClient')
+      return []
     }
-
+    
     try {
-      console.log('Calling contract.getInvoice with tokenId:', tokenId)
-      const invoice = await contract.getInvoice(tokenId)
-      console.log('Raw invoice data from contract:', invoice)
-      const formattedInvoice = {
-        id: Number(invoice.id),
-        sme: invoice.sme,
-        investor: invoice.investor,
-        client: invoice.client,
-        faceValue: ethers.formatEther(invoice.faceValue),
-        salePrice: ethers.formatEther(invoice.salePrice),
-        salePriceWei: invoice.salePrice, // Keep original wei value for transactions
-        faceValueWei: invoice.faceValue, // Keep original wei value for transactions
-        dueDate: Number(invoice.dueDate),
-        invoiceURI: invoice.invoiceURI,
-        status: Number(invoice.status),
-        createdAt: Number(invoice.createdAt)
+      console.log('Calling getInvoicesByClient for address:', client)
+      console.log('Contract address:', CONTRACT_ADDRESS)
+      
+      // Call getInvoicesByClient and handle the response
+      const result = await contract.getInvoicesByClient(client)
+      console.log('Raw result from getInvoicesByClient:', result)
+      
+      // Handle empty result cases
+      if (!result) {
+        console.log('Null result from getInvoicesByClient')
+        return []
       }
-      console.log('Formatted invoice data:', formattedInvoice)
-      return formattedInvoice
+      
+      if (!Array.isArray(result)) {
+        console.error('Unexpected result type:', typeof result)
+        return []
+      }
+      
+      if (result.length === 0) {
+        console.log('No invoices found for client')
+        return []
+      }
+      
+      // Convert BigNumber array to number array
+      const tokenIds = result.map(id => id.toString())
+      console.log('Token IDs for client:', tokenIds)
+      
+      // Then get full invoice details for each token
+      const invoices = await Promise.all(
+        tokenIds.map(async (tokenId) => {
+          try {
+            const invoice = await contract.getInvoice(tokenId)
+            console.log(`Raw invoice ${tokenId}:`, invoice)
+            
+            const processedInvoice = {
+              ...invoice,
+              // Convert BigNumber values to strings
+              id: invoice.id.toString(),
+              faceValue: ethers.formatEther(invoice.faceValue),
+              salePrice: ethers.formatEther(invoice.salePrice),
+              dueDate: invoice.dueDate.toString(),
+              createdAt: invoice.createdAt.toString(),
+              status: Number(invoice.status)
+            }
+            
+            console.log(`Processed invoice ${tokenId} SME data:`, {
+              sme: processedInvoice.sme,
+              smeFormatted: processedInvoice.sme ? `${processedInvoice.sme.slice(0, 6)}...${processedInvoice.sme.slice(-4)}` : 'N/A',
+              investor: processedInvoice.investor,
+              client: processedInvoice.client
+            })
+            
+            return processedInvoice
+          } catch (error) {
+            console.error(`Error getting invoice ${tokenId}:`, error)
+            return null
+          }
+        })
+      )
+      
+      // Filter out any failed invoice fetches
+      const validInvoices = invoices.filter(invoice => invoice !== null)
+      console.log('Processed invoices for client:', validInvoices)
+      return validInvoices
     } catch (error) {
-      console.error('Error fetching invoice:', error)
-      return null
+      console.error('Error getting invoices by client:', error)
+      return []
     }
   }, [contract])
 
-  const getInvoicesByClient = useCallback(async (clientAddress) => {
-    if (!contract) return []
-
-    try {
-      // Use the new getInvoicesByClient function from the smart contract
-      const tokenIds = await contract.getInvoicesByClient(clientAddress)
-      
-      // Get invoice details for each tokenId
-      const invoices = []
-      for (const tokenId of tokenIds) {
-        try {
-          const invoice = await getInvoice(Number(tokenId))
-          if (invoice) {
-            invoices.push(invoice)
-          }
-        } catch (error) {
-          console.error(`Error fetching invoice ${tokenId}:`, error)
-          // Continue with other invoices even if one fails
-        }
-      }
-      
-      return invoices
-    } catch (error) {
-      console.error('Error fetching invoices by client:', error)
+  const getInvoicesBySME = useCallback(async (sme) => {
+    if (!contract) {
+      console.error('Contract not initialized')
       return []
     }
-  }, [contract, getInvoice])
-
-  const getInvoicesBySME = useCallback(async (smeAddress) => {
-    if (!contract) return []
-
+    
     try {
-      // Use the new getInvoicesBySME function from the smart contract
-      const tokenIds = await contract.getInvoicesBySME(smeAddress)
+      console.log('Calling getInvoicesBySME for address:', sme)
+      console.log('Contract address:', CONTRACT_ADDRESS)
       
-      // Get invoice details for each tokenId
-      const invoices = []
-      for (const tokenId of tokenIds) {
-        try {
-          const invoice = await getInvoice(Number(tokenId))
-          if (invoice) {
-            invoices.push(invoice)
-          }
-        } catch (error) {
-          console.error(`Error fetching invoice ${tokenId}:`, error)
-          // Continue with other invoices even if one fails
-        }
+      // Call getInvoicesBySME and handle the response
+      const result = await contract.getInvoicesBySME(sme)
+      console.log('Raw result from getInvoicesBySME:', result)
+      
+      // Handle empty result cases
+      if (!result) {
+        console.log('Null result from getInvoicesBySME')
+        return []
       }
       
-      return invoices
+      if (!Array.isArray(result)) {
+        console.error('Unexpected result type:', typeof result)
+        return []
+      }
+      
+      if (result.length === 0) {
+        console.log('No invoices found for SME')
+        return []
+      }
+      
+      // Convert BigNumber array to number array
+      const tokenIds = result.map(id => id.toString())
+      console.log('Token IDs for SME:', tokenIds)
+      
+      // Then get full invoice details for each token
+      const invoices = await Promise.all(
+        tokenIds.map(async (tokenId) => {
+          try {
+            const invoice = await contract.getInvoice(tokenId)
+            console.log(`Raw invoice ${tokenId}:`, invoice)
+            
+            return {
+              ...invoice,
+              // Convert BigNumber values to strings
+              id: invoice.id.toString(),
+              faceValue: ethers.formatEther(invoice.faceValue),
+              salePrice: ethers.formatEther(invoice.salePrice),
+              dueDate: invoice.dueDate.toString(),
+              createdAt: invoice.createdAt.toString(),
+              status: Number(invoice.status)
+            }
+          } catch (error) {
+            console.error(`Error getting invoice ${tokenId}:`, error)
+            return null
+          }
+        })
+      )
+      
+      // Filter out any failed invoice fetches
+      const validInvoices = invoices.filter(invoice => invoice !== null)
+      console.log('Processed invoices:', validInvoices)
+      return validInvoices
     } catch (error) {
-      console.error('Error fetching invoices by SME:', error)
-      return []
-    }
-  }, [contract, getInvoice])
-
-  const getTotalInvoices = useCallback(async () => {
-    if (!contract) return 0
-
-    try {
-      const total = await contract.getTotalInvoices()
-      return Number(total)
-    } catch (error) {
-      console.error('Error fetching total invoices:', error)
-      return 0
+      console.error('Error getting invoices by SME:', error)
+      throw error
     }
   }, [contract])
 
-  // Listen for account and network changes
+  // Log contract state changes
   useEffect(() => {
-    if (!isMetaMaskInstalled()) return
+    console.log('Contract state updated:', {
+      contract: contract?.target || contract?.address,
+      mintAction: mintAction?.target || mintAction?.address,
+      purchaseAction: purchaseAction?.target || purchaseAction?.address,
+      settleAction: settleAction?.target || settleAction?.address,
+      signer: signer?.address,
+      account,
+      chainId,
+      isCorrectNetwork
+    })
+  }, [contract, mintAction, purchaseAction, settleAction, signer, account, chainId, isCorrectNetwork])
 
-    const handleAccountsChanged = (accounts) => {
-      if (accounts.length === 0) {
-        disconnectWallet()
-      } else if (accounts[0] !== account) {
-        setAccount(accounts[0])
-      }
-    }
-
-    const handleChainChanged = (chainId) => {
-      const newChainId = parseInt(chainId, 16)
-      setChainId(newChainId)
-      setIsCorrectNetwork(newChainId === TARGET_CHAIN_ID)
-      
-      if (newChainId !== TARGET_CHAIN_ID) {
-        setContract(null)
-        toast.error(`Please switch to ${TARGET_NETWORK_NAME}`)
-      }
-    }
-
-    window.ethereum.on('accountsChanged', handleAccountsChanged)
-    window.ethereum.on('chainChanged', handleChainChanged)
-
-    return () => {
-      if (window.ethereum.removeListener) {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged)
-        window.ethereum.removeListener('chainChanged', handleChainChanged)
-      }
-    }
-  }, [account, disconnectWallet, TARGET_CHAIN_ID, TARGET_NETWORK_NAME])
-
-  // Auto-connect if previously connected
+  // Re-initialize contracts when network changes
   useEffect(() => {
-    const autoConnect = async () => {
-      if (!isMetaMaskInstalled()) return
+    const initializeContracts = async () => {
+      if (!signer || !isCorrectNetwork) {
+        console.log('Skipping contract initialization:', {
+          hasSigner: !!signer,
+          isCorrectNetwork,
+          signerAddress: signer?.address
+        })
+        return
+      }
 
       try {
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' })
-        if (accounts.length > 0) {
-          await connectWallet()
+        console.log('Initializing contracts after network change:', {
+          CONTRACT_ADDRESS,
+          MINT_ACTION_ADDRESS,
+          PURCHASE_ACTION_ADDRESS,
+          SETTLE_ACTION_ADDRESS,
+          signerAddress: signer.address
+        })
+
+        if (CONTRACT_ADDRESS) {
+          const contractInstance = new ethers.Contract(CONTRACT_ADDRESS, InvoiceNFTABI.abi, signer)
+          console.log('InvoiceNFT contract initialized:', {
+            address: contractInstance.target || contractInstance.address,
+            hasInterface: await contractInstance.supportsInterface('0x80ac58cd') // ERC721 interface ID
+          })
+          setContract(contractInstance)
+        } else {
+          console.error('CONTRACT_ADDRESS is not set')
+        }
+
+        if (MINT_ACTION_ADDRESS) {
+          const mintActionInstance = new ethers.Contract(MINT_ACTION_ADDRESS, MintInvoiceActionABI.abi, signer)
+          console.log('MintAction contract initialized:', mintActionInstance.target || mintActionInstance.address)
+          setMintAction(mintActionInstance)
+        } else {
+          console.error('MINT_ACTION_ADDRESS is not set')
+        }
+
+        if (PURCHASE_ACTION_ADDRESS) {
+          const purchaseActionInstance = new ethers.Contract(PURCHASE_ACTION_ADDRESS, PurchaseInvoiceActionABI.abi, signer)
+          console.log('PurchaseAction contract initialized:', purchaseActionInstance.target || purchaseActionInstance.address)
+          setPurchaseAction(purchaseActionInstance)
+        } else {
+          console.error('PURCHASE_ACTION_ADDRESS is not set')
+        }
+
+        if (SETTLE_ACTION_ADDRESS) {
+          const settleActionInstance = new ethers.Contract(SETTLE_ACTION_ADDRESS, SettleInvoiceActionABI.abi, signer)
+          console.log('SettleAction contract initialized:', settleActionInstance.target || settleActionInstance.address)
+          setSettleAction(settleActionInstance)
+        } else {
+          console.error('SETTLE_ACTION_ADDRESS is not set')
         }
       } catch (error) {
-        console.error('Error auto-connecting:', error)
+        console.error('Error initializing contracts:', error)
       }
     }
 
-    autoConnect()
-  }, [connectWallet])
+    initializeContracts()
+  }, [signer, isCorrectNetwork])
 
+  // Event listeners
+  useEffect(() => {
+    if (window.ethereum) {
+      // Handle account changes
+      window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length === 0) {
+          disconnectWallet()
+        } else {
+          setAccount(accounts[0])
+        }
+      })
+
+      // Handle chain changes
+      window.ethereum.on('chainChanged', (chainId) => {
+        window.location.reload()
+      })
+
+      // Handle disconnect
+      window.ethereum.on('disconnect', () => {
+        disconnectWallet()
+      })
+    }
+
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeAllListeners()
+      }
+    }
+  }, [disconnectWallet])
+
+  // Context value
   const value = {
-    // State
-    account,
     provider,
     signer,
-    contract,
+    account,
     chainId,
-    isConnecting,
     isCorrectNetwork,
-    isMetaMaskInstalled: isMetaMaskInstalled(),
+    isConnecting,
+    contract,
+    mintAction,
+    purchaseAction,
+    settleAction,
     transactionHistory,
-    
-    // Actions
     connectWallet,
     disconnectWallet,
     switchNetwork,
-    
-    // Contract functions
     tokenizeInvoice,
+
     buyInvoice,
     repayInvoice,
+    markAsDefaulted,
+    getInvoice,
     getInvoicesByStatus,
     getInvoicesByOwner,
-    getInvoice,
     getInvoicesByClient,
     getInvoicesBySME,
-    getTotalInvoices,
-    
-    // Utility functions
-    addTransactionToHistory,
-    getTransactionExplorerUrl,
-    
-    // Constants
-    CONTRACT_ADDRESS,
-    TARGET_CHAIN_ID,
-    TARGET_NETWORK_NAME
+    getTransactionExplorerUrl
   }
 
   return (
@@ -579,3 +790,148 @@ export const Web3Provider = ({ children }) => {
     </Web3Context.Provider>
   )
 }
+
+// Custom hook for using Web3 context
+export function useWeb3() {
+  const context = useContext(Web3Context)
+  if (!context) {
+    throw new Error('useWeb3 must be used within a Web3Provider')
+  }
+  return context
+}
+
+export default Web3Context
+
+
+
+const tokenizeInvoice = async (clientAddress, faceValue, salePrice, dueDate, invoiceURI) => {  try {
+    console.log("Tokenizing invoice with params:", { clientAddress, faceValue, salePrice, dueDate, invoiceURI });
+    
+    // Parse values
+    const parsedFaceValue = ethers.parseEther(faceValue.toString());
+    const parsedSalePrice = ethers.parseEther(salePrice.toString());
+    const parsedDueDate = Math.floor(new Date(dueDate).getTime() / 1000);
+    
+    console.log("Parsed values:", { parsedFaceValue, parsedSalePrice, parsedDueDate });
+
+    // Check contract initialization
+    if (!mintAction || !signer || !contract || !purchaseAction) {
+      console.error("Contracts not initialized:", {
+        mintAction: mintAction?.target || mintAction?.address,
+        signer: signer?.address,
+        contract: contract?.target || contract?.address,
+        purchaseAction: purchaseAction?.target || purchaseAction?.address
+      });
+      throw new Error("Contracts not initialized");
+    }
+
+    // Check if contract is owned by MintInvoiceAction
+    const owner = await contract.owner();
+    const mintActionAddress = mintAction.target || mintAction.address;
+    console.log("Contract ownership:", { owner, mintActionAddress });
+
+    if (owner.toLowerCase() !== mintActionAddress.toLowerCase()) {
+      console.log("Current owner is not MintInvoiceAction, transferring ownership...");
+      
+      // Check if we are the current owner
+      const signerAddress = await signer.getAddress();
+      console.log("Checking ownership:", { currentOwner: owner, signer: signerAddress });
+      
+      if (owner.toLowerCase() !== signerAddress.toLowerCase()) {
+        throw new Error("Current owner is not the signer. Please deploy new contracts or use the correct account.");
+      }
+
+      // Transfer ownership to MintInvoiceAction
+      console.log("Transferring ownership to MintInvoiceAction...");
+      const transferTx = await contract.transferOwnership(mintActionAddress);
+      const transferReceipt = await transferTx.wait();
+      console.log("Ownership transferred:", transferReceipt);
+
+      // Verify ownership transfer
+      const newOwner = await contract.owner();
+      console.log("New owner:", newOwner);
+      
+      if (newOwner.toLowerCase() !== mintActionAddress.toLowerCase()) {
+        throw new Error("Ownership transfer failed");
+      }
+    }
+
+    // Execute mint action
+    console.log("Executing mint action...");
+    const tx = await mintAction.execute(
+      await signer.getAddress(),
+      clientAddress,
+      parsedFaceValue,
+      parsedSalePrice,
+      parsedDueDate,
+      invoiceURI
+    );
+
+    console.log("Transaction hash:", tx.hash);
+
+    // Wait for transaction confirmation
+    const receipt = await tx.wait();
+    console.log("Transaction receipt:", receipt);
+    console.log("Transaction receipt details:", {
+      status: receipt.status,
+      blockNumber: receipt.blockNumber,
+      gasUsed: receipt.gasUsed.toString(),
+      from: receipt.from,
+      to: receipt.to
+    });
+
+    // Log all transaction logs for debugging
+    console.log("All transaction logs:", receipt.logs);
+    
+    // Try to find either InvoiceMinted or InvoiceTokenized event
+    let tokenId = null;
+    
+    for (const log of receipt.logs) {
+      try {
+        console.log("Processing log:", {
+          address: log.address,
+          topics: log.topics,
+          data: log.data
+        });
+
+        // Try parsing as InvoiceMinted event
+        const mintActionAddress = mintAction.target || mintAction.address;
+        if (log.address.toLowerCase() === mintActionAddress.toLowerCase()) {
+          const parsedLog = mintAction.interface.parseLog(log);
+          console.log("Parsed MintAction log:", parsedLog);
+          if (parsedLog?.name === 'InvoiceMinted') {
+            tokenId = parsedLog.args.tokenId;
+            console.log("Found InvoiceMinted event with tokenId:", tokenId.toString());
+            break;
+          }
+        }
+        
+        // Try parsing as InvoiceTokenized event
+        const contractAddress = contract.target || contract.address;
+        if (log.address.toLowerCase() === contractAddress.toLowerCase()) {
+          const parsedLog = contract.interface.parseLog(log);
+          console.log("Parsed NFT log:", parsedLog);
+          if (parsedLog?.name === 'InvoiceTokenized') {
+            tokenId = parsedLog.args.tokenId;
+            console.log("Found InvoiceTokenized event with tokenId:", tokenId.toString());
+            break;
+          }
+        }
+      } catch (parseError) {
+        console.log("Failed to parse log:", parseError);
+        continue;
+      }
+    }
+
+    if (!tokenId) {
+      throw new Error("No InvoiceMinted or InvoiceTokenized event found in transaction receipt");
+    }
+
+    console.log("✅ Invoice tokenized successfully with tokenId:", tokenId.toString());
+
+    return tokenId.toString();
+  } catch (error) {
+    console.error("Error in tokenizeInvoice:", error);
+    throw error;
+  }
+};

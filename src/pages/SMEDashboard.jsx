@@ -39,8 +39,39 @@ const SMEDashboard = () => {
   const loadInvoices = async () => {
     try {
       setLoading(true)
-      const invoices = await getInvoicesBySME(account)
-      setInvoices(invoices)
+      const smeInvoices = await getInvoicesBySME(account)
+      console.log('SME invoices loaded:', smeInvoices)
+      
+      // Process invoices to ensure proper data types and handle all fields
+      const processedInvoices = smeInvoices.map(invoice => {
+        // Convert BigInt values to appropriate types for proper handling
+        const processedInvoice = {
+          id: invoice.id ? Number(invoice.id) : 0,
+          sme: invoice.sme || '',
+          investor: invoice.investor || '',
+          client: invoice.client || '',
+          faceValue: invoice.faceValue ? parseFloat(invoice.faceValue.toString()) : 0, // Convert to number for direct display
+          salePrice: invoice.salePrice ? parseFloat(invoice.salePrice.toString()) : 0, // Convert to number
+          dueDate: invoice.dueDate ? Number(invoice.dueDate) : 0,
+          invoiceURI: invoice.invoiceURI || '',
+          status: invoice.status !== undefined ? Number(invoice.status) : 0,
+          createdAt: invoice.createdAt ? Number(invoice.createdAt) : 0
+        }
+        
+        return processedInvoice
+      })
+      
+      console.log(`Loaded ${processedInvoices.length} invoices for SME`)
+      if (processedInvoices.length > 0) {
+        console.log('First SME invoice sample:', {
+          id: processedInvoices[0].id,
+          faceValue: processedInvoices[0].faceValue,
+          formattedValue: formatCurrency(processedInvoices[0].faceValue),
+          dueDate: processedInvoices[0].dueDate,
+          status: processedInvoices[0].status
+        })
+      }
+      setInvoices(processedInvoices)
     } catch (error) {
       console.error('Error loading invoices:', error)
       toast.error('Failed to load invoices')
@@ -160,11 +191,29 @@ const SMEDashboard = () => {
   }
 
   const formatDate = (timestamp) => {
-    return new Date(timestamp * 1000).toLocaleDateString()
+    if (!timestamp) return 'Invalid Date'
+    // Handle BigInt conversion
+    const timestampNumber = typeof timestamp === 'bigint' ? Number(timestamp) : timestamp
+    return new Date(timestampNumber * 1000).toLocaleDateString()
   }
 
-  const formatXDC = (amount) => {
-    return `${parseFloat(amount).toFixed(2)} XDC`
+  const formatCurrency = (amount) => {
+    if (!amount) return '0.00 FLOW'
+    
+    // Handle different input types
+    let numericValue
+    if (typeof amount === 'bigint') {
+      // Convert BigInt to number by dividing by 10^18 (wei to ether)
+      numericValue = Number(amount) / 1e18
+    } else if (typeof amount === 'string') {
+      // If it's a string, parse it directly (assuming it's already in FLOW)
+      numericValue = parseFloat(amount)
+    } else {
+      // If it's already a number, use it directly (assuming it's already in FLOW)
+      numericValue = parseFloat(amount)
+    }
+    
+    return `${isNaN(numericValue) ? 0 : numericValue.toFixed(2)} FLOW`
   }
 
   if (!account) {
@@ -227,7 +276,9 @@ const SMEDashboard = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Value</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {formatXDC(invoices.reduce((sum, inv) => sum + parseFloat(inv.faceValue || 0), 0))}
+                  {formatCurrency(invoices.reduce((sum, inv) => {
+                    return sum + (inv.faceValue || 0)
+                  }, 0))}
                 </p>
               </div>
             </div>
@@ -311,8 +362,8 @@ const SMEDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {invoices.map((invoice) => (
-                    <tr key={invoice.id} className="hover:bg-gray-50">
+                  {invoices.map((invoice, index) => (
+                    <tr key={`${invoice.id || index}`} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           <InvoiceThumbnail invoiceId={invoice.id} className="w-10 h-10" />
@@ -323,10 +374,10 @@ const SMEDashboard = () => {
                         {invoice.client?.slice(0, 6)}...{invoice.client?.slice(-4)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatXDC(invoice.faceValue)}
+                        {formatCurrency(invoice.faceValue)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatXDC(invoice.salePrice)}
+                        {formatCurrency(invoice.salePrice)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatDate(invoice.dueDate)}
@@ -404,7 +455,7 @@ const SMEDashboard = () => {
               </div>
               
               <div>
-                <label className="label">Face Value (XDC) *</label>
+                <label className="label">Face Value (FLOW) *</label>
                 <input
                   type="number"
                   name="faceValue"
@@ -419,7 +470,7 @@ const SMEDashboard = () => {
               </div>
               
               <div>
-                <label className="label">Sale Price (XDC) *</label>
+                <label className="label">Sale Price (FLOW) *</label>
                 <input
                   type="number"
                   name="salePrice"

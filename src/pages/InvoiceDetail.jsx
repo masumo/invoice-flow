@@ -18,6 +18,9 @@ import {
   CheckCircleIcon
 } from '@heroicons/react/24/outline'
 
+// Constants
+const MIN_DAYS_BEFORE_DUE = 3;
+
 const InvoiceDetail = () => {
   const { tokenId } = useParams()
   const navigate = useNavigate()
@@ -76,19 +79,46 @@ const InvoiceDetail = () => {
       return
     }
 
-    if (invoice.status !== 0) {
-      toast.error('This invoice is no longer available for purchase')
-      return
-    }
-
     try {
+      const status = Number(invoice.status);
+      const daysToMaturity = calculateDaysToMaturity();
+      const isExpired = isInvoiceExpired();
+
+      console.log('Purchase validation:', {
+        tokenId,
+        status,
+        daysToMaturity,
+        isExpired,
+        MIN_DAYS_BEFORE_DUE
+      });
+
+      if (status !== 0) {
+        toast.error('This invoice is no longer available for purchase')
+        return
+      }
+
+      if (isExpired) {
+        toast.error('This invoice has expired and cannot be purchased')
+        return
+      }
+
+      if (daysToMaturity < MIN_DAYS_BEFORE_DUE) {
+        toast.error('Invoice cannot be purchased within 3 days of due date')
+        return
+      }
+
       setPurchasing(true)
-      const receipt = await buyInvoice(invoice.id, invoice.salePriceWei)
+      console.log('Attempting to purchase invoice with tokenId:', tokenId)
+      const receipt = await buyInvoice(tokenId)
+      console.log('Purchase successful, receipt:', receipt)
       
       // Store transaction hash for display
       setLastTransactionHash(receipt.hash)
       
       setShowConfirmModal(false)
+      
+      // Show success message
+      toast.success('Invoice purchased successfully!')
       
       // Reload invoice data to show updated status
       await loadInvoice()
@@ -99,47 +129,90 @@ const InvoiceDetail = () => {
       }, 2000)
     } catch (error) {
       console.error('Error purchasing invoice:', error)
-      toast.error('Failed to purchase invoice')
+      toast.error(`Failed to purchase invoice: ${error.message}`)
     } finally {
       setPurchasing(false)
     }
   }
 
+
+
   const calculateROI = () => {
-    if (!invoice) return 0
-    const faceValue = parseFloat(invoice.faceValue)
-    const salePrice = parseFloat(invoice.salePrice)
-    return ((faceValue - salePrice) / salePrice * 100)
+    try {
+      if (!invoice) return 0
+      // Convert BigInt values to Numbers and from wei to FLOW
+      const faceValue = Number(invoice.faceValue) / 1e18
+      const salePrice = Number(invoice.salePrice) / 1e18
+      return ((faceValue - salePrice) / salePrice * 100)
+    } catch (error) {
+      console.error('Error calculating ROI:', error)
+      return 0
+    }
   }
 
   const calculateDaysToMaturity = () => {
-    if (!invoice) return 0
-    const now = Date.now() / 1000
-    const days = Math.ceil((invoice.dueDate - now) / (24 * 60 * 60))
-    return Math.max(0, days)
+    try {
+      if (!invoice) return 0
+      const now = Math.floor(Date.now() / 1000) // Current timestamp in seconds
+      const dueDate = Number(invoice.dueDate) // Convert BigInt to Number
+      console.log('Days to maturity calculation:', {
+        now,
+        dueDate,
+        difference: dueDate - now,
+        days: Math.ceil((dueDate - now) / (24 * 60 * 60))
+      })
+      const days = Math.ceil((dueDate - now) / (24 * 60 * 60))
+      return Math.max(0, days)
+    } catch (error) {
+      console.error('Error calculating days to maturity:', error)
+      return 0
+    }
   }
 
   const isInvoiceExpired = () => {
+    try {
+      if (!invoice) return false
+      const now = Math.floor(Date.now() / 1000) // Current timestamp in seconds
+      const dueDate = Number(invoice.dueDate)
+      console.log('Invoice expiry check:', {
+        now,
+        dueDate,
+        isExpired: now > dueDate
+      })
+      return now > dueDate
+    } catch (error) {
+      console.error('Error checking invoice expiry:', error)
+      return false
+    }
+  }
+
+  const isWithinMinDays = () => {
     if (!invoice) return false
-    const now = Date.now() / 1000
-    return now > invoice.dueDate
+    return calculateDaysToMaturity() < MIN_DAYS_BEFORE_DUE
   }
 
   const formatDate = (timestamp) => {
-    return new Date(timestamp * 1000).toLocaleDateString('en-US', {
+    // Convert BigInt timestamp to Number before creating Date object
+    const timestampNumber = Number(timestamp) * 1000
+    return new Date(timestampNumber).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     })
   }
 
-  const formatXDC = (amount) => {
-    return `${parseFloat(amount).toFixed(2)} XDC`
+  const formatFlow = (amount) => {
+    // Convert BigInt to Number and from wei to FLOW
+    const flowAmount = Number(amount) / 1e18
+    return `${flowAmount.toFixed(2)} FLOW`
   }
 
   const getStatusInfo = (status) => {
+    // Convert BigInt to Number
+    const statusNumber = Number(status);
+    
     // Check if invoice is expired first
-    if (status === 0 && isInvoiceExpired()) {
+    if (statusNumber === 0 && isInvoiceExpired()) {
       return {
         text: 'Expired',
         icon: ExclamationTriangleIcon,
@@ -148,7 +221,7 @@ const InvoiceDetail = () => {
       }
     }
     
-    switch (status) {
+    switch (statusNumber) {
       case 0:
         return {
           text: 'Available for Purchase',
@@ -261,9 +334,9 @@ const InvoiceDetail = () => {
           </button>
           <div className="flex justify-between items-start">
             <div className="flex items-center space-x-4">
-              <InvoiceThumbnail invoiceId={invoice.id} className="w-16 h-16" />
+              <InvoiceThumbnail invoiceId={tokenId} className="w-16 h-16" />
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Invoice #{invoice.id}</h1>
+                <h1 className="text-3xl font-bold text-gray-900">Invoice #{tokenId}</h1>
                 <p className="text-gray-600 mt-1">Detailed invoice information and investment opportunity</p>
               </div>
             </div>
@@ -290,12 +363,12 @@ const InvoiceDetail = () => {
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <CurrencyDollarIcon className="h-8 w-8 text-green-600 mx-auto mb-2" />
                     <p className="text-sm text-gray-600">Face Value</p>
-                    <p className="text-2xl font-bold text-gray-900">{formatXDC(invoice.faceValue)}</p>
+                    <p className="text-2xl font-bold text-gray-900">{formatFlow(invoice.faceValue)}</p>
                   </div>
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <CurrencyDollarIcon className="h-8 w-8 text-blue-600 mx-auto mb-2" />
                     <p className="text-sm text-gray-600">Sale Price</p>
-                    <p className="text-2xl font-bold text-gray-900">{formatXDC(invoice.salePrice)}</p>
+                    <p className="text-2xl font-bold text-gray-900">{formatFlow(invoice.salePrice)}</p>
                   </div>
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <ArrowTrendingUpIcon className="h-8 w-8 text-purple-600 mx-auto mb-2" />
@@ -318,7 +391,7 @@ const InvoiceDetail = () => {
                 <div className="space-y-4">
                   <div className="flex justify-between py-3 border-b border-gray-200">
                     <span className="text-gray-600">Invoice ID:</span>
-                    <span className="font-semibold">#{invoice.id}</span>
+                    <span className="font-semibold">#{tokenId}</span>
                   </div>
                   <div className="flex justify-between py-3 border-b border-gray-200">
                     <span className="text-gray-600">SME Address:</span>
@@ -411,16 +484,16 @@ const InvoiceDetail = () => {
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Investment Amount:</span>
-                    <span className="font-bold text-lg">{formatXDC(invoice.salePrice)}</span>
+                    <span className="font-bold text-lg">{formatFlow(invoice.salePrice)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Expected Return:</span>
-                    <span className="font-bold text-lg text-green-600">{formatXDC(invoice.faceValue)}</span>
+                    <span className="font-bold text-lg text-green-600">{formatFlow(invoice.faceValue)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Profit:</span>
                     <span className="font-bold text-lg text-green-600">
-                      {formatXDC(parseFloat(invoice.faceValue) - parseFloat(invoice.salePrice))}
+                      {formatFlow(Number(invoice.faceValue) - Number(invoice.salePrice))}
                     </span>
                   </div>
                   <div className="flex justify-between border-t pt-3">
@@ -429,22 +502,63 @@ const InvoiceDetail = () => {
                   </div>
                 </div>
                 
-                {invoice.status === 0 && !isInvoiceExpired() ? (
-                  <button
-                    onClick={() => setShowConfirmModal(true)}
-                    className="w-full btn-primary"
-                    disabled={purchasing}
-                  >
-                    {purchasing ? 'Processing...' : 'Buy Invoice'}
-                  </button>
-                ) : (
-                  <div className="text-center p-4 bg-gray-100 rounded-lg">
-                    <statusInfo.icon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-600">
-                      {isInvoiceExpired() ? 'This invoice has expired and cannot be purchased' : 'This invoice is no longer available for purchase'}
-                    </p>
-                  </div>
-                )}
+                {(() => {
+                  const daysToMaturity = calculateDaysToMaturity();
+                  const isExpired = isInvoiceExpired();
+                  const status = Number(invoice.status); // Convert BigInt to Number
+                  const isSME = account && invoice.sme && account.toLowerCase() === invoice.sme.toLowerCase();
+                  
+                  console.log('Debug Button Conditions:', {
+                    status,
+                    daysToMaturity,
+                    minDays: MIN_DAYS_BEFORE_DUE,
+                    isExpired,
+                    isSME,
+                    account,
+                    sme: invoice.sme,
+                    shouldShowPurchaseButton: status === 0 && !isExpired && daysToMaturity >= MIN_DAYS_BEFORE_DUE && !isSME
+                  });
+                  
+                  // SME can view their invoice but cannot purchase it
+                  if (isSME && status === 0) {
+                    return (
+                      <div className="text-center p-4 bg-blue-50 rounded-lg">
+                        <p className="text-blue-700 font-medium">Your Invoice is Listed</p>
+                        <p className="text-sm text-blue-600 mt-1">
+                          This invoice is available for investors to purchase.
+                        </p>
+                      </div>
+                    );
+                  }
+                  
+                  // If user is investor and invoice is available
+                  if (!isSME && status === 0 && !isExpired && daysToMaturity >= MIN_DAYS_BEFORE_DUE) {
+                    return (
+                      <button
+                        onClick={() => setShowConfirmModal(true)}
+                        className="w-full btn-primary"
+                        disabled={purchasing}
+                      >
+                        {purchasing ? 'Processing...' : 'Buy Invoice'}
+                      </button>
+                    );
+                  }
+                  
+                  // Default case - show status message
+                  return (
+                    <div className="text-center p-4 bg-gray-100 rounded-lg">
+                      <statusInfo.icon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-600">
+                        {daysToMaturity < MIN_DAYS_BEFORE_DUE ? 
+                          'Invoice cannot be purchased within 3 days of due date to ensure sufficient time for settlement' :
+                          isExpired ? 
+                            'This invoice has expired and cannot be purchased' :
+                            'This invoice is no longer available for purchase'
+                        }
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -483,15 +597,15 @@ const InvoiceDetail = () => {
                 <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                   <div className="flex justify-between">
                     <span>Invoice ID:</span>
-                    <span className="font-semibold">#{invoice.id}</span>
+                    <span className="font-semibold">#{tokenId}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Investment:</span>
-                    <span className="font-semibold">{formatXDC(invoice.salePrice)}</span>
+                    <span className="font-semibold">{formatFlow(invoice.salePrice)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Expected Return:</span>
-                    <span className="font-semibold text-green-600">{formatXDC(invoice.faceValue)}</span>
+                    <span className="font-semibold text-green-600">{formatFlow(invoice.faceValue)}</span>
                   </div>
                   <div className="flex justify-between border-t pt-2">
                     <span>ROI:</span>
