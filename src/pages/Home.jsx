@@ -7,47 +7,57 @@ export default function Home() {
   const { account, chainId, isCorrectNetwork, connectWallet } = useWeb3()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
-      <div className="container mx-auto px-4 py-16">
-        {/* Hero Section */}
-        <div className="text-center mb-16 bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl py-16 px-8 shadow-2xl">
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
-            InvoiceFlow
-          </h1>
-          <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
-            InvoiceFlow transforms traditional invoice financing through blockchain technology, 
-            connecting SMEs with global investors on the Flow blockchain.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {!account ? (
-              <button
-                onClick={connectWallet}
-                className="bg-flow-600 hover:bg-flow-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300 shadow-lg"
-              >
-                Connect Wallet
-              </button>
-            ) : !isCorrectNetwork ? (
-              <div className="text-red-400 font-semibold">
-                Please switch to Flow EVM network
-              </div>
-            ) : (
-              <div className="flex gap-4">
-                <Link
-                  to="/sme"
-                  className="bg-white hover:bg-gray-100 text-gray-900 font-bold py-3 px-8 rounded-lg transition duration-300 shadow-lg"
+    <div className="min-h-screen">
+      {/* Hero Section with Stats */}
+      <section className="bg-gradient-to-br from-gray-900 to-gray-800 text-white py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Hero Content */}
+          <div className="text-center mb-16">
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              Revolutionize Invoice
+              <span className="block text-blue-200">Financing with DeFi</span>
+            </h1>
+            <p className="text-xl md:text-2xl text-blue-100 mb-8 max-w-3xl mx-auto">
+              InvoiceFlow transforms traditional invoice financing through blockchain technology, 
+              connecting SMEs with global investors on the Flow blockchain.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              {!account ? (
+                <button
+                  onClick={connectWallet}
+                  className="bg-white text-gray-900 hover:bg-gray-100 font-bold py-3 px-8 rounded-lg transition duration-300 shadow-lg"
                 >
-                  SME Dashboard
-                </Link>
-                <Link
-                  to="/investor"
-                  className="bg-flow-600 hover:bg-flow-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300 shadow-lg"
-                >
-                  Investor Dashboard
-                </Link>
-              </div>
-            )}
+                  Connect Wallet
+                </button>
+              ) : !isCorrectNetwork ? (
+                <div className="text-red-400 font-semibold">
+                  Please switch to Flow EVM network
+                </div>
+              ) : (
+                <div className="flex gap-4">
+                  <Link
+                    to="/sme"
+                    className="bg-white hover:bg-gray-100 text-gray-900 font-bold py-3 px-8 rounded-lg transition duration-300 shadow-lg"
+                  >
+                    SME Dashboard
+                  </Link>
+                  <Link
+                    to="/investor"
+                    className="border-2 border-white text-white hover:bg-white hover:text-gray-900 font-bold py-3 px-8 rounded-lg transition duration-300"
+                  >
+                    Start Investing
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
+
+
         </div>
+      </section>
+
+      <div className="bg-gradient-to-br from-gray-50 to-white">
+        <div className="container mx-auto px-4 py-16">
 
         {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
@@ -102,21 +112,22 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Network Status */}
-        <div className="text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white shadow-lg border border-gray-200">
-            <div className={`w-3 h-3 rounded-full ${isCorrectNetwork ? 'bg-flow-500' : 'bg-red-500'}`}></div>
-            <span className="text-gray-900">
-              {chainId ? (
-                isFlowNetwork(chainId.toString()) ? (
-                  'Connected to Flow EVM'
+          {/* Network Status */}
+          <div className="text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white shadow-lg border border-gray-200">
+              <div className={`w-3 h-3 rounded-full ${isCorrectNetwork ? 'bg-flow-500' : 'bg-red-500'}`}></div>
+              <span className="text-gray-900">
+                {chainId ? (
+                  isFlowNetwork(chainId.toString()) ? (
+                    'Connected to Flow EVM'
+                  ) : (
+                    'Please switch to Flow EVM network'
+                  )
                 ) : (
-                  'Please switch to Flow EVM network'
-                )
-              ) : (
-                'Not connected'
-              )}
-            </span>
+                  'Not connected'
+                )}
+              </span>
+            </div>
           </div>
         </div>
       </div>
