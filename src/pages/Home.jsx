@@ -36,13 +36,13 @@ export default function Home() {
               ) : (
                 <div className="flex gap-4">
                   <Link
-                    to="/sme"
+                    to="/sme-dashboard"
                     className="bg-white hover:bg-gray-100 text-gray-900 font-bold py-3 px-8 rounded-lg transition duration-300 shadow-lg"
                   >
                     SME Dashboard
                   </Link>
                   <Link
-                    to="/investor"
+                    to="/marketplace"
                     className="border-2 border-white text-white hover:bg-white hover:text-gray-900 font-bold py-3 px-8 rounded-lg transition duration-300"
                   >
                     Start Investing
