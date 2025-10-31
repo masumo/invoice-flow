@@ -21,9 +21,11 @@ Smart contracts (Solidity) and frontend have been migrated from XDC to **Flow EV
 
 ## 🚀 Live Demo & Video
 
-- **Live Demo**: [Vercel App](https://invoice-flow-jet.vercel.app/)
-- **Demo Video**: [Loom Video](https://www.loom.com/share/b13ca7f5efca40a39573ea10b5e7a001?sid=caf57e3e-7381-4258-abbc-3676226b0ec6)
-- **Presentation**: [Gamma Site](https://invoiceflow-revolutioniz-32p44ny.gamma.site/)
+- **Flow Version (Latest)**: [https://invoice-flow-3i0h130wp-masumos-projects.vercel.app](https://invoice-flow-3i0h130wp-masumos-projects.vercel.app)
+- **XDC Legacy (Hackathon)**: [https://invoice-flow-qv4pdej95-masumos-projects.vercel.app](https://invoice-flow-qv4pdej95-masumos-projects.vercel.app)
+- **Deploy to Vercel**: [Deploy to Vercel](https://vercel.com/new/clone?repository-url=https://github.com/masumo/invoiceflow)
+- **Demo Video**: [Coming Soon - YouTube Link]
+- **Presentation**: [Coming Soon - Pitch Deck]
 
 ## ⛓️ Smart Contract on Flow EVM
 
