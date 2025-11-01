@@ -34,6 +34,18 @@ Smart contracts (Solidity) and frontend have been migrated from XDC to **Flow EV
 - **Explorer**: [Flow EVM Explorer](https://evm-testnet.flowscan.io/)
 - **Previous Network**: Migrated from XDC Apothem Testnet
 
+### 📋 Deployed Contract Addresses
+
+| Contract | Address | Description |
+|----------|---------|-------------|
+| **InvoiceNFT** | [`0x54f58D21fF4967726b9D8fA96d52c04D3346097a`](https://evm-testnet.flowscan.io/address/0x54f58D21fF4967726b9D8fA96d52c04D3346097a) | Core NFT contract for invoice tokenization |
+| **MintInvoiceAction** | [`0x9bd563aD53a3da82F251b368a775dE9E2BbC014d`](https://evm-testnet.flowscan.io/address/0x9bd563aD53a3da82F251b368a775dE9E2BbC014d) | Contract for minting invoice NFTs |
+| **PurchaseInvoiceAction** | [`0x2d60D7E5Cf666143F2daA5ee84D5d4bd3632d229`](https://evm-testnet.flowscan.io/address/0x2d60D7E5Cf666143F2daA5ee84D5d4bd3632d229) | Contract for purchasing invoice NFTs |
+| **SettleInvoiceAction** | [`0x8584a8C819Da80ceDa204b4BAC40123B909D2148`](https://evm-testnet.flowscan.io/address/0x8584a8C819Da80ceDa204b4BAC40123B909D2148) | Contract for settling invoice payments |
+
+> **Deployer Address**: `0x24E12d5Db42EefeC360e02aCc6F82C682e3C264d`  
+> **Deployment Date**: November 1, 2025
+
 ## 🎯 The Problem We Solve
 
 Small and Medium Enterprises (SMEs) face a critical cash flow gap in global trade finance. When SMEs deliver goods or services, they often wait 30-90 days for payment from clients, creating liquidity challenges that can:
