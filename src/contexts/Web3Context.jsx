@@ -31,6 +31,15 @@ console.log('Environment Variables:', {
   RPC_URL: import.meta.env.VITE_RPC_URL
 })
 
+// Additional debug logging for Vercel deployment
+console.log('Raw Environment Variables:', {
+  VITE_CHAIN_ID: import.meta.env.VITE_CHAIN_ID,
+  VITE_NETWORK_NAME: import.meta.env.VITE_NETWORK_NAME,
+  VITE_RPC_URL: import.meta.env.VITE_RPC_URL,
+  NODE_ENV: import.meta.env.NODE_ENV,
+  MODE: import.meta.env.MODE
+})
+
 export function Web3Provider({ children }) {
   // State management
   const [provider, setProvider] = useState(null)

@@ -1,10 +1,12 @@
 {
   "network": "flowTestnet",
-  "invoiceNFT": "0x1c8f2cE46f7E1FA213900149f92fCb90522CfEE6",
-  "mintAction": "0x9B7C02ACfC44D9Da4F34D1b42973aa4495daCBC8",
-  "purchaseAction": "0x4eA7f086d1815556B4FDBaa187Fe90710b57183D",
-  "settleAction": "0x34eb43222e02fEF11255be4B3e8d1928349BCFCE",
-  "platformWallet": "0x24E12d5Db42EefeC360e02aCc6F82C682e3C264d",
-  "platformFee": 100,
-  "timestamp": "2025-10-31T09:08:44.171Z"
+  "chainId": "545",
+  "deployer": "0x24E12d5Db42EefeC360e02aCc6F82C682e3C264d",
+  "contracts": {
+    "InvoiceNFT": "0x54f58D21fF4967726b9D8fA96d52c04D3346097a",
+    "MintInvoiceAction": "0x9bd563aD53a3da82F251b368a775dE9E2BbC014d",
+    "PurchaseInvoiceAction": "0x2d60D7E5Cf666143F2daA5ee84D5d4bd3632d229",
+    "SettleInvoiceAction": "0x8584a8C819Da80ceDa204b4BAC40123B909D2148"
+  },
+  "deploymentTime": "2025-11-01T01:12:23.464Z"
 }

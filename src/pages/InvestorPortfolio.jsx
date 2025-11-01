@@ -179,7 +179,17 @@ const InvestorPortfolio = () => {
   }
 
   const getStatusInfo = (status) => {
-    switch (status) {
+    // Convert BigInt to Number to handle blockchain data properly
+    const statusNumber = Number(status);
+    
+    switch (statusNumber) {
+      case 0:
+        return {
+          text: 'On Market',
+          icon: ClockIcon,
+          color: 'text-yellow-600',
+          bg: 'bg-yellow-100'
+        }
       case 1:
         return {
           text: 'Active',
